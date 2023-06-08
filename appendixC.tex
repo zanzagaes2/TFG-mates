@@ -1,0 +1,50 @@
+El siguiente resultado demuestra que el modelo puede explotar fácilmente la información sobre la posición relativa codificada mediante \( \phi \).
+\begin{proposition}
+Sea \( \tau \in \nat \). Existe una transformación lineal \( T^{(\tau)} : \real{d} \to \real{d} \) tal que para todo \( t \in \nat \):
+\begin{equation} \label{eq:position}
+    \phi(t + \tau) = T^{(\tau)} \phi(t) 
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Consideremos la matriz diagonal por bloques:
+\[
+    T^{(k)} = \begin{pmatrix} 
+    \Phi_\tau^{(1)} & 0 & \dots & 0 & 0 \\
+    0 & \Phi_\tau^{(2)} & \dots & 0 & 0 \\
+    0 & 0 & \ddots & \Phi_\tau^{(d/2 - 1)} & 0 \\
+    0 & 0 & \dots & 0 & \Phi_\tau^{(d/2)} \\
+    \end{pmatrix}
+\]
+donde \[ 
+    \Phi^{(k)}_{\tau} = \begin{pmatrix}
+        \cos(\omega_k \tau) & \sen(\omega_k \tau) \\
+        -\sen(\omega_k \tau) & \cos(\omega_k \tau)
+    \end{pmatrix}
+\]
+
+La \cref{eq:position} es equivalente a probar:
+\[
+    \begin{pmatrix}
+        \cos(\omega_k \tau) & \sen(\omega_k \tau) \\
+        -\sen(\omega_k \tau) & \cos(\omega_k \tau)
+    \end{pmatrix} \begin{pmatrix}
+        \sin(\omega_k t) \\ 
+        \cos(\omega_k t)
+    \end{pmatrix} = \begin{pmatrix}
+        \sin(\omega_k (t + \tau)) \\ 
+        \cos(\omega_k (t + \tau))
+    \end{pmatrix}
+\]
+para \( k = 1, \dots, d/2\), que se deriva directamente desarrollando el producto y aplicando las identidades \( \sen(\alpha + \beta) = \sen\alpha \cos\beta + \cos\alpha \sin\beta \) y \( \cos(\alpha + \beta) = \cos\alpha \cos\beta + - \sin\alpha \sin\beta \).
+\end{proof}
+
+\subsection{Similitud aditiva}
+En el caso de que las consultas y claves tengan distinta dimensión, es posible utilizar el producto escalar normalizado como función de similitud reemplazando \( K^T \) por \(  (MK)^T \) donde \( M \in \real{d_k \times d_q }\) es una matriz de proyección adecuada. Otra posibilidad, es utilizar la similitud aditiva, definida para \( q \in \real{d_q}, k \in \real{d_k} \) como:
+\[
+    a(q, k) = (W^v)^T \tanh(W^q q + W^k k) \in \realo \qquad \alpha(q ,k) = \softmax(a(q,k))
+\]
+siendo \( W^q \in \real{d_h \times d_q}, W^k \in \real{d_h \times d_k} \) y \( W^v \in \real{d_h} \)
+parámetros aprendidos por el modelo.
+
+Esta función fue, durante mucho tiempo, la función de similitud dominante y conceptos de inmensa influencia (como el modelo de atención de Bahdanau) fueron definidos con esta función en mente. Sus proponentes defendían que esta función de similitud era más eficiente computacionalmente, dado que la mayor parte de las operaciones son sumas. No obstante, la vigencia del modelo \textit{transformer}, que utiliza el producto escalar normalizado, y los estudios que han demostrado que en la práctica hay poca diferencia de rendimiento entre ambas funciones han hecho que el producto escalar normalizado pase a ser la opción preferencial.

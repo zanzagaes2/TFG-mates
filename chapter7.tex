@@ -1,0 +1,26 @@
+\chapter{Conclusiones}
+En este trabajo hemos introducido las redes neuronales y presentado con cierto detalle algunos de los problemas generales asociados, como su entrenamiento utilizando técnicas de gradiente o la regularización. El campo está dominado por las redes neuronales profundas, modelos con una excelente capacidad de generalización, pero que funcionan como una caja negra y requieren grandes recursos computacionales.
+
+Hemos presentado el campo del procesamiento de lenguaje natural y sus retos y técnicas únicos. La imposibilidad de formalizar los lenguajes naturales, su complejidad y su ambigüedad son retos formidables, que aun estamos lejos de dominar. Los \textit{transformers} son actualmente el mejor mecanismo para abordar estos problemas: superan las limitaciones de las arquitecturas recurrentes previas y ofrecen una solución escalable, que puede usarse para construir \textit{grandes modelos de lenguaje}, redes neuronales capaces de desenvolverse eficazmente en problemas muy diversos.
+
+Los \textit{transformers} son redes secuenciales que utilizan el mecanismo de atención para captar la relación entre símbolos, de forma flexible y elegante. La atención no es una técnica concreta sino más bien una familia de técnicas que puede adaptarse a multitud de problemas, como es el caso de la regresión.
+
+Además de potentes herramientas, los \textit{transformer} son modelos sencillos, construidos modularmente mediante bloques decodificador y codificador. Esto hace fácil implementarlos de forma elegante. 
+
+El diseño modular permite crear arquitecturas especializadas, de tipo codificador (como Bert) o decodificador (como GPT). En líneas generales estos modelos son fáciles de implementar (y hacerlo es un excelente ejercicio educativo) pero existen librerías de código abierto de gran calidad con modelos pre-entrenados.
+
+Modelos como GPT-1 o GPT-2 pueden utilizarse para abordar problemas complejos como, en este caso, la generación de texto en el estilo de Lope de Vega. Como ya hemos visto, el uso de grandes modelos pre-entrenados \textit{afinados} para la tarea específica ofrece una forma eficaz y eficiente de aproximar estos problemas. La existencia de herramientas y librerías de software libre con modelos pre-entrenados y la abundancia de recursos al respecto, 
+
+\section{Campos relacionados}
+El contenido presentado en este trabajo dista de ser una descripción exhaustiva sobre los \textit{transformer} y sus posibilidades. Presentamos ahora algunas vías de trabajo que pueden resultar de interés para el lector atraído por el tema.
+
+En primer lugar, estas arquitecturas pueden abordar con resultados excelentes prácticamente cualquier problema relacionado con el lenguaje natural, desde la traducción automática al análisis de sentimientos en textos. De hecho, arquitecturas derivadas de los \textit{transformer} ya están en muchos casos en la vanguardia en otros campos, como la visión por computador, donde los \textit{vision transformer} han desplazado a las redes convolucionales. Invitamos al lector a que, con la base ofrecida en las páginas anteriores, explore sus aplicaciones.
+
+El campo no solo ofrece multitud de retos prácticos, también siguen abiertos problemas teóricos muy trascendentales, como el cálculo eficiente de la atención o la comprensión y prevención de las \textit{alucinaciones}, problema este último especialmente problemático para la integración de los \textit{transformers} en herramientas de uso público. Se trata de un campo con una activa comunidad investigadora, con frecuentes descubrimientos de relevancia.
+
+\section{Trabajo futuro}
+El trabajo realizado en estas páginas ofrece una base para investigaciones futuras. En lo referente al problema de generar texto al estilo de Lope de Vega, utilizar modelos pre-entrenados más grandes y un conjunto de datos mayor muy probablemente proporcionará mejores resultados. Un conjunto de datos anotado podría permitir que la red neuronal pudiese realizar acciones adicionales, como generar una escena a partir de una descripción de la misma o relacionarse de forma interactiva con el usuario en el estilo del Siglo de Oro, de forma similar a un asistente conversacional. 
+
+Otra posibilidad es aplicar esta técnica a otros autores  (necesariamente prolíficos, dada la importancia de un conjunto de datos suficientemente grande) e identificar qué características le cuesta más imitar al modelo. Es razonable esperar que características  locales, como el vocabulario utilizado, serán aprendidas de forma más fácil que características globales, como mantener y desarrollar un tema uniformemente.
+
+Se abren, en definitiva, multitud de líneas de estudio, a buen seguro capaces de cautivar la atención de lectores de muy variados intereses.

@@ -1,0 +1,118 @@
+\chapter{Atención}
+Como se ha descrito en el capítulo anterior, antes de la popularización del mecanismo de \textit{atención} la mayoría de modelos para el procesamiento de lenguaje natural disponían de un componente, el \textit{codificador}, que codificaba la secuencia de entrada de longitud variable en un \textit{estado}, una representación de la entrada de longitud fija y de un segundo componente, el \textit{decodificador}, que actuaba como un modelo condicional del lenguaje, prediciendo cada símbolo de salida a partir del estado y los símbolos ya generados.
+
+El mecanismo de atención hereda la distinción entre \textit{codificador} y \textit{decodificador} pero parte de la idea de que el decodificador revisite la entrada a cada paso de forma que, en lugar de ver siempre la misma representación, pueda prestar atención de forma dinámica a distintas partes de la entrada. Para ello, el decodificador recibe una suma ponderada de las representaciones de la entrada: el factor de ponderación (peso) determina la importancia de cada símbolo\footnote{El término "símbolo" (\textit{token}) denota las unidades en las que se dividen las secuencias de entrada y salida a fin de que sean procesadas por el modelo. La naturaleza concreta del símbolo dependerá del contexto: puede tratarse de una letra, una palabra, un fragmento sonoro (por ejemplo, cuando se traduce habla a texto)... }. El codificador generará una representaciones de cada símbolo de la entrada que pueda ser consumida por el mecanismo de atención.
+
+Diseñando el proceso de asignación de pesos como una función diferenciable, el problema de la distribución óptima de los pesos puede resolverse como un problema de optimización usando, por ejemplo, descenso de gradiente. En este capítulo se formaliza la noción de atención y se discuten algunas de sus variantes.
+
+\section{Autoatención}
+
+\begin{definition}[Base de datos]
+    Sean \( d_k, d_v \in \nat \) y dos sucesiones \( \Set{ k_i }_{i = 1}^m \) con \( k_i \in \real{d_k} \), \( \Set{v_i}_{i = 1}^m \) con  \( v_ i \in \real{d_v} \), que llamaremos \textit{claves} y \textit{valores} respectivamente. Llamamos \textit{base de datos} al conjunto ordenado \( \mathcal{D} = \left\{ (k_i, v_i) \colon i = 1, …, m \right\} \),
+\end{definition}
+
+Es frecuente que las claves y valores se agrupen en matrices, a fin de facilitar los cálculos y la representación. En este caso, la base de datos \( \mathcal{D} = \left\{ (k_i, v_i) \mid i = 1, …, m \right\} \) puede denotarse simplemente como \( \Set{K, V} \) donde \( K \) y \( V \) son las matrices que tienen por filas las claves y valores (esto es, \( K_{i, :} = k_i\), \( V_{i, :} = v_i \) para todo \( i = 1, …, m\))
+
+\begin{definition}[Atención] Sea \( \mathcal{D} = \left\{ (k_i, v_i) \colon i = 1, …, m \right\} \) una base de datos con \( k_i \in \real{d_k}, v_i \in \real{d_v}\) y \( \alpha \colon \real{d_q} \times \real{d_k} \to \realo \).
+
+Dado un vector \( q \in \real{d_q} \) (llamado consulta o \textit{query}) definimos la \textit{atención de \( q \) sobre \( \mathcal{D} \)} como:
+\[
+\attention(q, \mathcal{D}; \alpha) = \sum^m_{i = 1} \alpha(q, k_i) v_i
+\]
+\end{definition}
+
+Los coeficientes \( \alpha(q, k_i) \) determinan la ponderación de cada valor de la base de datos. La función \( \alpha \) recibe el nombre de función o \textit{kernel} de similitud, pues por lo general asigna una mayor ponderación a los valores asociados a las claves más similares a la consulta.
+
+Es común imponer las condiciones \( \sum_i \alpha(q, k_i) = 1 \), \( \alpha(q, k_i) \geq 0\) de forma que el vector de atención sea una combinación convexa de los valores.
+
+\section{Funciones de similitud}
+Los mecanismos de atención son conceptualmente independientes de la función de similitud concreta escogida. Existen varias razones, no obstante, por las que merece la pena detenerse a estudiar algunas de las posibles funciones de similitud. En primer lugar, elegir una función de similitud es imprescindible para poder realizar un análisis riguroso de la complejidad computacional asintótica de la operación de atención. En segundo lugar, la elección de una buena función de similitud es una condición imprescindible para que la atención pueda ser utilizada para resolver problemas.
+
+La función de similitud dominante es el producto escalar normalizado. Partamos del caso en el que tenemos una serie de consultas \( \Set{ q_1, …, q_n \}\) y una base de datos \( \mathcal{D} = \{(k_i, v_i)_i = 1, …, m}\) de forma que consultas, claves y valores son vectores con la misma dimensión. Consideremos el logaritmo del \textit{kernel} de atención Gaussiano para una consulta \( q \) y una clave \( k_{i} \):
+\[
+    a(q, k_i) = -\frac{1}{2} \|q - k_i\|^2  = q^T k - \frac{1}{2} \| k_i \|^2 - \frac{1}{2} \| q \|^2
+\]
+
+En líneas generales, las redes neuronales contemporáneas están severamente normalizadas. Esto permite omitir el último término, dado que solo depende de \( q \). También el penúltimo término puede eliminarse sin demasiada repercusión, pues la normalización de la red asegurará que la norma \( \| k_i \| \) de todas las claves será aproximadamente constante.
+
+La función de producto escalar normalizado se obtiene normalizando el resultado, de forma que si suponemos que \( q, k \in \real{d} \) son vectores independientes e idénticamente distribuidos con media \( 0 \) y varianza \( 1 \) el \textit{kernel} también tenga media \( 0 \) y varianza \( 1 \).
+
+\begin{definition}[Producto escalar normalizado]
+Dada una consulta \( q \in \real{d}\) y un conjunto de claves \( (k_i)_{i = 1}^n \) con \( k_i \in \real{d} \) definimos la función de similitud de producto escalar normalizado como:
+\[
+    \alpha(q, k_{i}) = \frac{\exp \left\{q^t \frac{k_{i}}{\sqrt{d}} \right\}}{\sum_j \exp \left\{ q^t \frac{k_{j}}{\sqrt{d}} \right\}}
+\]
+\end{definition}
+
+Esta función de atención tiene excelentes propiedades computacionales pues si agrupamos las consultas, claves y valores en matrices \( Q, K, V \) entonces:
+\begin{equation} \label{eq:dot_product}
+    \attention(Q, \mathcal{D}) = \softmax(\frac{K^TQ}{\sqrt{d}}) V
+\end{equation}
+expresión que puede calcularse de forma extremadamente eficiente.
+
+El problema de la expresión en la \cref{eq:dot_product} es que puede que no queramos que todas las consultas se calculen sobre la misma base de datos. Este problema puede resolverse de forma computacionalmente eficiente utilizando una \textit{máscara}:
+\begin{definition}[Atención con máscara]
+    Dadas matrices \( Q \in \real{d_\text{attn} \times d_q}\), \(K \in \real{d_\text{attn} \times d_k}\), \(V \in \real{d_\text{attn} \times d_v}\) y una máscara \( \mathcal{M} \in \Set{0, 1}^{d_k \times d_q}\) llamamos \textit{atención con máscara} o \textit{masked attention} a la función:
+    \begin{align*}
+        \mattention(Q, \mathcal{D}, \mathcal{M}) = \softmax(\frac{S}{\sqrt{d}})V && S_{i, j} = \begin{cases}
+            (K^TQ)_{i,j} & \text{si $\mathcal{M}_{i, j} = 1$} \\
+            -\infty & \text{si $\mathcal{M}_{i, j} = 0$} 
+        \end{cases}
+    \end{align*}
+\end{definition}
+
+
+\section{Atención multicabezal (\textit{multihead})}
+En los modelos diseñados para el procesamiento de lenguaje natural, las consultas y la base de datos se construyen como proyecciones de los símbolos de entrada. En ese caso, las consultas y la base de datos pueden presentar relaciones tan complejas como los datos en sí mismos y el uso directo del mecanismo de atención resulta demasiado restrictivo.
+
+Se introduce para ello una variante de la atención llamada \textit{atención multicabezal}, que parte de la idea de crear distintos \textit{cabezales} de atención cada uno de los cuales trabaje con proyecciones distintas de la base de datos. Formalizamos esta idea:
+
+\begin{definition}[Cabezal de atención (\textit{attention head})]
+    Sea \( q \in \real{d_q} \) una consulta, \( k \in \real{d_k} \) una clave y \( v \in \real{d_v} \) un valor. Sean \( p_q, p_k, p_v \in \nat \) y \( \alpha \colon \real{p_q} \times \real{p_k} \to \realo \) una función de similitud. Dadas matrices \( W^q \in \real{p_q \times d_q}, W^k \in \real{p_k \times d_k}, W^v \in \real{p_v \times d_v} \) definimos un cabezal de atención \( H \) como la función:
+    \begin{equation} \label{eq:head}
+        \head(q, k, v; W^q, W^k, W^v, \alpha)  = \attention(W^q q, \Set{W^k k,  W^v v }; \alpha)
+    \end{equation}
+\end{definition}
+
+Al combinar los cabezales de atención se obtiene una \textit{atención multicabezal}
+\begin{definition}[Atención multicabezal (\textit{multihead attention})]     
+     Sean \( (\head_{i})_{i = 1}^{n_h} \) cabezales de atención con parámetros \( \theta_{i} = \Set{ W^q_{i}, W^k_{i}, W^v_{i}, \alpha } \). Dado \( p_o \in \nat \) y una matriz \( W^o \in \real{p_0 \times n_h p_v} \) definimos la atención multicabezal como la función:
+     \[
+        \multihead \left(q, k, v; \mathfrak{W}, \alpha \right) = W^o \begin{pmatrix} \head_{1}(q, k, v; \theta_{1}, \alpha) \\ \vdots \\ \head_{n_h}(q, k, v; \theta_{n_h}, \alpha) \end{pmatrix}
+     \]
+     con \( \mathfrak{W} = \Set{ (W^q_{i})_{i = 1}^{n_h}, (W^k_{i})_{i = 1}^{n_h}, (W^v_{i})_{i = 1}^{n_h}, W^o} \).
+\end{definition}
+
+La definición anterior proporciona una forma directa de definir la capa de atención, como la capa que computa la función \( \multihead \) para una elección concreta de \( \alpha \), de forma que todas las matrices \( W \) son proyecciones aprendidas por la red. 
+
+Habitualmente, \( \alpha \) es la función de producto escalar normalizado, lo que hace directo definir una variante de la atención multicabezal con máscara utilizando cabezales que usen la atención con máscara: \( \mmultihead(\smallbullet, \mathcal{M}; \mathfrak{W}) 
+\). 
+
+La investigación ha demostrado que la atención multicabezal es una técnica muy efectiva: durante el entramiento se desarrollan cabezales especializados con una función interpretable \cite{voita2019analyzing}. En el caso del lenguaje natural, por ejemplo, se han identificado cabezales con una función \textit{posicional}, \textit{sintáctica} y para la identificación de \textit{términos infrecuentes}.
+
+Otra ventaja de la atención multicabezal proviene de que usualmente la dimensión del espacio de proyección es considerablemente menor que la dimensión original de las consultas y la base de datos. Dado que los cálculos en los distintos cabezales son paralelizables, la atención multicabezal permite reducir el tiempo necesario para el cálculo de la atención. Estudiaremos con más detenimiento este punto cuando analizemos la complejidad computacional asintótica de los mecanismos de atención.
+
+\section{Complejidad computacional asintótica de la atención}
+Presentadas ya las funciones de similitud más habituales, emprendemos el estudio de la complejidad computacional asintótica de los mecanismos de atención. Asumiremos que utilizamos el producto escalar como función de similitud y que las consultas, claves y valores están representados por matrices de dimensión \( n \times d \).
+
+En el caso en el que no utilizamos atención \textit{multicabezal}, el cálculo directo de la expresión en la \cref{eq:dot_product} requiere el cómputo del producto \( QK^T \), que puede hacerse en tiempo \( \mathcal{O}(n^2 d) \), mientras que el cálculo de la operación \textit{softmax} puede realizarse en tiempo \( \mathcal{O} (n^2) \). La multiplicación del resultado con la matriz \( V \) necesita tiempo \( \mathcal{O}(n^2 d) \). Por tanto, la complejidad computacional asintótica es \( \mathcal{O} (n^2 d) \).
+
+Supongamos ahora que utilizamos atención multicabezal con \( H \) cabezales, con lo que para cada cabezal hay que evaluar la expresión presente en la \cref{eq:head}. Si suponemos que las consultas, claves y valores son proyectadas a un espacio de dimensión \( p \), las matrices de proyección tendrán dimensión \( p \times d \) y las expresiones \( W^q q, W^k k, W^v v \) pueden calcularse en tiempo \( \mathcal{O}(npd) \). Utilizando el análisis anterior, el coste de calcular la atención sobre los vectores proyectados es \( 
+\mathcal{O} (n^2 p) \), con lo que la complejidad asintótica total es \( \mathcal{O}(hpnd + hn^2p) \). Por lo general, el segundo término domina al primero, \( H \) es una constante pequeña \cite{voita2019analyzing} y \( p \) es significativamente menor que \( d \) (por ejemplo, en el modelo BERT \( d = 768 \) y \( p = 64 \)) lo que justifica nuestra afirmación de que la atención multicabezal consigue ganancias de eficiencia.
+
+Una de las grandes ventajas del mecanismo de atención es que el cálculo de la atención para cada consulta es independiente del resto, lo que significa que su cálculo puede paralelizarse. De hecho, paralelizando los cálculos sobre cada cabezal y las multiplicaciones matriciales es posible realizar los cálculos con \( \mathcal{O}(1) \) operaciones secuenciales, teniendo el camino más largo también  \( \mathcal{O}(1) \) operaciones. La mayor debilidad computacional del mecanismo de atención proviene de la la dependencia cuadrática sobre \( n \). Dado que el tamaño de la base de datos y las consultas suele crecer linealmente con el tamaño de la secuencia de entrada, esto lo hace inviable para aproximar problemas con secuencias de entrada muy largas.
+
+\section{Atención de Bahdanau y autoatención}
+Ya hemos comentado que la estrategia usada comunmente por las redes recurrentes de mantener un estado de longitud fija que comprima la entrada es inviable para secuencia de entrada complejas.
+
+El \textit{transformer} usa una estrategia distinta: en cada instante de tiempo \( t \), se mantiene una variable de \textit{contexto} \( z_t \) que se actualiza como una función del estado generado por el codificador a partir del texto original codificado en forma de claves y valores \( (h_{t}^k, h_{t}^v) \) y del texto ya generado por el decodificador \( s_{t-1} \). Si el texto tiene longitud \( T \) entonces la variable de contexto en el instante \( t_0 \) viene dada por:
+\[
+    z_{t_0} = \sum^{T}_{t = 1} \alpha(s_{t_0 - 1}, h_{t}^k) h_{t}^v
+\]
+y \( z_{t_0} \) es utilizado para generar el estado \( s_{t_0 - 1} \) y un nuevo símbolo.
+
+Este es en esencia el \textit{mecanismo de atención de Bahdanau} \cite{bahdanau2014neural}, que proporciona un método diferenciable para resolver el problema del \textit{alineamiento}: es decir, de cómo consumir la secuencia de entrada conforme se genera la salida.
+
+El mecanismo fue ampliado más adelante para incluir en el cálculo de \( z_{t} \) los símbolos ya generados por el modelo, (con lo que la suma en la definición de \( z_{t_0} \) se extiende hasta \( t = t_0-1 \))  \cite{chan2015listen}
+
+En este esquema, cada símbolo tiene asociados tres elementos: el vector de consulta, las claves y los valores. En el \textit{transformer} estos vectores se generan mediante proyecciones aprendidas de la representación numérica de cada símbolo. Durante el cálculo de la variable de contexto \( z_{t_0} \), la consulta asociada a un símbolo interactúa con todos los demás símbolos a través de sus claves: a esta propiedad se le llama \textit{autoatención} o \textit{intratención}.

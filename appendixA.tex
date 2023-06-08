@@ -1,0 +1,97 @@
+\chapter{Implementación de GPT} \label{appendixA}
+GPT es un modelo sencillo y puede implementarse elegantemente en pocos cientos de líneas de código. Se presenta aquí una implementación funcional de los bloques fundamentales, que hace uso de la biblioteca \textit{pytorch}.
+
+La implementación de la atención multicabezal puede hacerse de forma muy similar a la explicada anteriormente (\cref{code:attn}), añadiendo \textit{abandono} en este caso. A fin de poder utilizar \textit{teacher forcing} de forma eficiente durante el entrenamiento, se \textit{enmascaran} los símbolos a la derecha del símbolo actual en la secuencia de entrada reemplazando esas posiciones con \( -\infty \), de forma que la activación de salida asociada a esa entrada sea \( 0 \).
+
+\begin{code}
+\begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
+class MultiheadAttention(Module):
+  def __init__(self, d_embedding, n_head, dropout, block_size):
+    super().__init__()
+    self.config.d_embedding = d_embedding
+    self.config.n_head = n_head
+
+    self.c_attn = nn.Linear(config.d_embedding, 3 * d_embedding)
+    self.c_proj = nn.Linear(config.d_embedding, d_embedding)
+    self.attn_dropout = nn.Dropout(dropout)
+    self.resid_dropout = nn.Dropout(dropout)
+    self.dropout = dropout
+    self.register_buffer("attn_mask", torch.tril(torch.ones(block_size, block_size)).view(1, 1, block_size, block_size))
+
+  def forward(self, x):
+    B, N, D = x.size()
+    q, k, v = self.c_attn(x).split(self.config.d_embedding, dim=2)
+    q = q.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
+    k = k.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
+    v = v.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
+
+    attn = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+    attn = softmax(attn.masked_fill(self.attn_mask[:,:,:T,:T] == 0, float('-inf')))
+    attn = self.attn_dropout(attn)
+    y = attn @ v
+    y = y.transpose(1, 2).contiguous().view(B, T, C)
+    y = self.resid_dropout(self.c_proj(y))
+    return y
+\end{minted}
+\caption{Implementación en \textit{Pytorch} de la atención multicabezal}
+\label{code:attn}
+\end{code}
+
+La dimensión de la representación de cada símbolo (\texttt{d\_embedding}), el número de cabezales de atención (\texttt{n\_head}), el factor de abandono (\texttt{dropout}) y la longitud de contexto (\texttt{block\_size}) se mantienen como parámetros, a fin de poder reutilizar la implementación para definir distintas versiones de GPT. 
+
+\begin{code}
+\begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
+def MLP(d_embedding, dropout):
+  return nn.Sequential(OrderedDict([
+    ("c_fc", nn.Linear(d_embedding, 4 * d_embedding)),
+    ("act", nn.GELU()),
+    ("c_proj", nn.Linear(4 * d_embedding, d_embedding)),
+    ("dropout", nn.Dropout(dropout))
+  ]))
+
+class Block(nn.Module):
+  def __init__(self, d_embedding, dropout):
+    super().__init__()
+    self.ln_1 = LayerNorm(d_embedding)
+    self.attn = MultiheadAttention(d_embedding)
+    self.ln_2 = LayerNorm(d_embedding)
+    self.mlp = MLP(dropout)
+
+  def forward(self, x):
+    x = x + self.attn(self.ln_1(x))
+    x = x + self.mlp(self.ln_2(x))
+    return x
+\end{minted}
+\caption{Implementación en \textit{Pytorch} del bloque decodificador del transformer}
+\label{code:decoder}
+\end{code}
+
+\begin{code}
+\begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
+class GPT(Module):
+  def __init__(self, d_embedding, n_layer, n_embd, vocab_size, block_size):
+    self.transformer = nn.ModuleDict(dict(
+      wte = Embedding(vocab_size, d_embedding),
+      wpe = Embedding(block_size, d_embedding),
+      drop = Dropout,
+      h = ModuleList([Block(config) for _ in range(n_layer)]),
+    ln_f = LayerNorm(n_embd)))
+    self.lm_head = nn.Linear(config.d_embedding, config.vocab_size, bias = False)
+
+  def forward(self, x):
+    _, t = x.size()
+    pos = torch.arange(0, t).unsqueeze(0)
+    tok_emb = self.transformer.wte(idx) # representación de los símbolos
+    pos_emb = self.transformer.wpe(pos) # representación de las posiciones
+
+    x = self.transformer.drop(tok_emb + pos_emb)
+    for block in self.transformer.h:
+      x = block(x)
+    x = self.transformer.ln_f(x)
+    return self.lm_head(x)
+\end{minted}
+\caption{Implementación en \textit{Pytorch} de la arquitectura GPT}
+\label{code:gpt}
+\end{code}
+
+El bloque decodificador del transformer, la base de GPT, se presenta en el \cref{code:decoder}. A partir de estos componentes, se pueden definir distintas arquitecturas inspiradas en GPT (\cref{code:gpt}), variando el número de bloques o la dimensión de las representaciones internas.

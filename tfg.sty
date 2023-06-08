@@ -1,0 +1,175 @@
+\usepackage{styles/tfg}
+\usepackage[spanish]{babel}
+\usepackage[table,xcdraw,dvipsnames]{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsxtra}
+\usepackage{stmaryrd}
+\usepackage{lmodern}
+\usepackage{indentfirst}
+\usepackage[
+    backend=biber,
+    style=numeric]{biblatex}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{listings}
+\usepackage[newfloat=true,outputdir=out]{minted}
+\usepackage{svg}
+\usepackage{csquotes}
+\usepackage{mathtools}
+\usepackage[spanish, onelanguage, boxed]{algorithm2e}
+\usepackage{nomencl}
+\usepackage{yhmath}
+\usepackage{color}
+\usepackage{multicol}
+\usepackage{fancyvrb}
+\usepackage{etoolbox}
+\usepackage{verse}
+\usepackage[hidelinks]{hyperref}
+\usepackage[noabbrev, spanish]{cleveref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xargs} 
+\usepackage{array,amsfonts}
+\usepackage[parfill]{parskip}
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{Code}{BVerbatim}{fontsize=\small, baseline=t}
+
+\newlength{\alphabet}
+\settowidth{\alphabet}{\normalfont abcdefghijklmnopqrstuvwxyz}
+\usepackage[textwidth=2.5\alphabet]{geometry}
+
+\usepackage{fontspec}
+
+\usepackage{unicode-math}
+\setmainfont[
+    SmallCapsFeatures = {LetterSpace=3, Renderer=Basic},
+    Ligatures=TeX,
+    Numbers={Proportional},
+]{Linux Libertine O}
+\setmonofont[Scale=MatchLowercase]{DejaVu Sans Mono for Powerline}
+\setmathfont[Scale=MatchUppercase]{Libertinus Math}
+\usepackage[protrusion=true, expansion=true]{microtype}
+
+\usepackage[toc,page]{appendix}
+\renewcommand{\appendixtocname}{Apéndice} % added <<<<<<<<<<<<<<<<<<<<<
+
+\usepackage{etoolbox}
+%% Use lining fonts
+\newcommand\lining{\addfontfeatures{Numbers={Monospaced, Lining}}}
+\AtBeginEnvironment{tabular}{\lining} % In tables
+\renewcommand{\theequation}{ {\lining\arabic{equation}}} % For equation numbers
+
+\renewcommand*{\citesetup}{
+  \lining
+  \biburlsetup
+  \frenchspacing}
+
+\frenchspacing
+
+%% 'compact' reduces the space above and below headings to a single blank line
+\usepackage[compact]{titlesec}  
+\titleformat{\chapter}[display]   
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}   
+\titlespacing*{\chapter}{0pt}{-50pt}{40pt}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+%% Upright (normal) numbers here
+\titleformat{\subsection}{\large}{\thesubsection}{.6em}{}
+%% Below, both heading should form sentences
+\titleformat{\subsubsection}{}{\thesubsubsection}{.6em}{}{\itshape}
+\titleformat{\paragraph}[runin]{}{\theparagraph}{0pt}{\itshape}
+
+% \titlespacing*{\section}{0pt}{1\baselineskip}{1\baselineskip}
+% \titlespacing*{\subsection}{0pt}{1\baselineskip}{1\baselineskip}
+% \titlespacing*{\subsubsection}{0pt}{8pt}{5pt}
+
+
+% Code environment
+\newenvironment{code}{\par\addvspace{1.5em plus1em minus1em} \captionsetup{type=listing}}{\par\addvspace{1em plus1em minus1em}}
+\SetupFloatingEnvironment{listing}{name=Código}
+\captionsetup[listing]{skip=.5\baselineskip,position=below}
+
+% Citation name
+\crefname{table}{tabla}{tablas}
+\crefname{code}{código}{códigos}
+\crefname{listing}{código}{códigos}
+
+% Theorems
+\newtheorem{theorem}{Teorema}
+\newtheorem{definition}{Definición}
+\newtheorem{proposition}{Proposición}
+
+% Symbols
+\renewcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+\newcommand{\calx}{\mathbb{X}}
+\newcommand{\caly}{\mathbb{Y}}
+\newcommand{\calu}{\mathbb{U}}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\newcommand{\nat}{\mathbb{N}}
+\newcommand{\realo}{\mathbb{R}}
+\newcommand{\real}[1]{\mathbb{R}^{#1}}
+
+\newcommand\myfunc[5]{%
+  \begingroup
+  \setlength\arraycolsep{0pt}
+  #1\colon\begin{array}[t]{c >{{}}c<{{}} c}
+             #2 & \to & #3 \\ #4 & \mapsto & #5 
+          \end{array}%
+  \endgroup}
+\DeclareMathOperator{\MLP}{MLP}
+\DeclareMathOperator{\bernoulli}{Bernoulli}
+\DeclareMathOperator{\multinomial}{Multinomial}
+\DeclareMathOperator{\normal}{Normal}
+\DeclareMathOperator{\id}{id}
+\DeclareMathOperator{\attention}{Atenci\acute{o}n}
+\DeclareMathOperator{\mattention}{MAtenci\acute{o}n}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator{\argmax}{arg max}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\BN}{BN}
+\DeclareMathOperator{\LN}{LN}
+\DeclareMathOperator{\relu}{ReLU}
+\DeclareMathOperator{\addnorm}{Add \& Norm}
+\DeclareMathOperator{\multihead}{MultiAtenci\acute{o}n}
+\DeclareMathOperator{\mmultihead}{M\acute{a}scaraMultiAtenci\acute{o}n}
+\DeclareMathOperator{\head}{cabezal}
+
+% Pseudocódigo
+\SetKwInput{KwHyper}{Hiperparámetros}
+\SetKwInput{KwParams}{Parámetros}
+\SetAlCapSkip{0.75em}
+\SetAlgoSkip{smallskip}
+\SetAlFnt{\small}
+\newlength\mylen
+\newcommand\mydata[1]{%
+  \settowidth\mylen{\KwData{}}%
+  \setlength{\mylen}{0.15\mylen}
+  \setlength\hangindent{\mylen}%
+  \hspace*{\mylen}#1\\
+}
+\newcommand\mydatal[1]{%
+  \settowidth\mylen{\KwData{}}%
+  \setlength{\mylen}{.3\mylen}
+  \setlength\hangindent{\mylen}%
+  \hspace*{\mylen}\vline \hspace{.5em} #1\\
+}
+
+% Atributtion
+\newcommand{\attrib}[1]{%
+\nopagebreak{\raggedleft #1\par}}
+\renewcommand{\poemtitlefont}{\normalfont\large\itshape\centering}
+
+% Small bullet
+\makeatletter
+\DeclareRobustCommand\smallbullet{%
+  \mathord{\mathpalette\smallbullet@{1}}%
+}
+\newcommand{\smallbullet@}[2]{%
+  \vcenter{\hbox{\scalebox{#2}{$\m@th#1\bullet$}}}%
+}
+
+  \newcommand{\Set}[1]{\{\,#1\,\}}

@@ -1,0 +1,57 @@
+\documentclass[12pt, a4paper, oneside]{book}
+\usepackage{tfg}
+
+% Notación
+\renewcommand\nomgroup[1]{%
+  \item[\bfseries
+  \ifstrequal{#1}{A}{Análisis}{%
+  \ifstrequal{#1}{L}{Álgebra lineal}{%
+  \ifstrequal{#1}{E}{Estadística}{
+  \ifstrequal{#1}{C}{Computación}{
+  }}}}%
+]}
+\renewcommand{\nompreamble}{En esta sección se describe el significado de los símbolos y la notación presente en este trabajo:}
+\makenomenclature
+\renewcommand{\nomname}{Notación}
+
+% Bibliography
+\addbibresource{references.bib}
+
+\setlength{\abovedisplayskip}{3mm}
+\setlength{\belowdisplayskip}{3mm}
+\setlength{\abovedisplayshortskip}{0mm}
+\setlength{\belowdisplayshortskip}{2mm}
+%%%% Lengths
+
+\pagestyle{plain}
+\begin{document}
+    \setcounter{page}{-1}
+    \input{cover}
+    \newpage
+    % \input{intro_state}
+    \pagenumbering{roman}
+    \setcounter{page}{1}
+    \tableofcontents
+    \printnomenclature[6em]
+
+    \newpage
+    \pagenumbering{arabic}
+    \setcounter{page}{1}
+
+    \input{chapter1}
+    \input{chapter2}
+    \input{chapter3}
+    \input{chapter4}
+    \input{chapter5}
+    \input{chapter6}
+    \input{chapter7}
+    \input{notation}
+
+    \printbibliography[
+        heading=bibintoc,
+        title={Referencias}
+    ]
+    \appendix
+    \input{appendixA}
+
+\end{document}

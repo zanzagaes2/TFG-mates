@@ -1,0 +1,111 @@
+\chapter{Procesamiento de lenguaje natural}
+Las redes neuronales convencionales no pueden aplicarse directamente a los problemas de \textit{transformación de secuencia}, en los que la entrada o la salida son una secuencia de longitud variable como, por ejemplo, los problemas de traducción automática o de generación de texto.
+
+A fin de contextualizar la presentación de los \textit{transformers}, este capítulo presenta el problema de procesar y generar secuencias, con énfasis en el problema por excelencia del campo: el procesamiento de lenguaje natural.
+
+También se presentan algunos trabajos novedosos que delinean el potencial de los \textit{transformers} para convertirse en mecanismos de propósito general.
+
+\section{Procesamiento de lenguaje natural}
+El procesamiento de lenguaje natural se ocupa del uso de los lenguajes naturales por sistemas informáticos. Los lenguajes naturales presentan retos únicos. No solo son inherentemente ambiguos y se resisten a ser descritos formalmente sino que la mayoría de problemas de lenguaje natural no están bien definidos y admiten múltiples soluciones. 
+
+La forma más habitual de abordar estos problemas desde el aprendizaje automático es diseñando \textit{modelos de lenguaje}, esto es, redes neuronales que aproximan una distribución de probabilidad sobre sucesiones de \textit{símbolos} (por ejemplo, letras o palabras) de un \textit{vocabulario}. Para ello, la red recibe una codificación de cada símbolo y la red computa una representación numérica multi-dimensional de cada símbolo (un \textit{embedding}) en un espacio mucho más pequeño (el espacio latente). Esta representación codifica espacialmente información semántica, de forma que las palabras que aparecen frecuentemente próximas están representadas por puntos cercanos y puede utilizarse para resolver el problema concreto de la red.
+
+\section{Modelos de lenguaje y generación de texto}
+Comencemos formalizando la noción de modelo de lenguaje, lo que requiere introducir algo de notación. Dado un alfabeto \( \mathbb{V} \), un conjunto finito indexado de símbolos, llamamos secuencias a las sucesiones finitas de símbolos del alfabeto. Denotamos al conjunto de todas las secuencias como \( \mathbb{V}^* \).
+
+Es conveniente tratar \( \mathbb{V} \) como un espacio de probabilidad, equipado con una función de probabilidad \( \mathbb{P} \). Dada una secuencia \( x \in \mathbb{V}^* \) un modelo de lenguaje aproxima 
+\[
+    \mathbb{P}(x_i \mid x_{i-1}, …, x_1)
+\]  
+mediante una función de probabilidad 
+\[ \widehat{\mathbb{P}} \left( x_{i} \mid x_{i-1}, …, x_{i - l_\text{máx}}; \theta \right) 
+\] 
+modelada mediante una red neuronal. \( l_\text{máx} \) recibe el nombre de \textit{longitud de contexto}.
+
+Los modelos de lenguaje pueden reutilizarse para tareas muy diversas, por ejemplo, la generación de texto. El proceso de generación de un nuevo símbolo se define como la función estocástica:
+\[
+    \myfunc{\mu}{\mathbb{V}^*}{\mathbb{V}}{(x_1, …, x_n)}{x_{n+1}}
+\]
+de forma que 
+\(
+    \mathbb{P}(\mu(x_1, …, x_n) = \alpha) = \widehat{\mathbb{P}} \left( x_{n+1} = \alpha \mid x_n … x_{n-l_\text{máx}} \right)
+\)
+
+Concatenando la secuencia inicial y el nuevo símbolo, se puede definir una función \( \overline{\mu} \) tal que \( \overline{\mu}(x) = (x, \mu(x)) \), con lo que el proceso de generación de texto puede entenderse como un proceso estocástico formado por una sucesión de variables \( \Set{ X^{(i)} }_{0 = 1}^N \) tales que:
+\begin{align*}
+X^{(0)} \in \mathbb{V}^* && X^{(i+1)} = \overline{\mu} (X^{(i)}) \quad \text{ para $i = 1, …, N$}
+\end{align*}
+La variable \( X^{(0)} \) recibe el nombre de texto de estímulo (\textit{prompt})
+
+\section{Diseño de redes para el procesamiento de lenguaje natural}
+La forma más directa (y, durante mucho tiempo la dominante) de abordar los problemas de \textit{secuencia a secuencia} es utilizando redes con conexiones cíclicas (o \textit{recurrentes}). Una red recurrente computa sobre la entrada \( \Set{ x_{1}, …, x_T } \in \mathbb{V}^* \) una función definida implícitamente mediante una ecuación de la forma:
+\begin{equation} \label{eq:rnn}
+    z_{t} = f(z_{t-1}, x_{t}, o_{t}; \theta)
+\end{equation}
+
+\( z_{t-1} \) ``comprime'' las entradas anteriormente procesadas por la red, de forma que ésta pueda utilizar el contexto provisto por los símbolos anteriores para interpretar el nuevo símbolo \( x_{t} \), mientras que \( o_{t - 1} \) recoge la salida generada por la red (por ejemplo, la probabilidad estimada de cada símbolo en el momento \( t - 1 \)).
+
+La interpretación de la salida de la red depende del problema concreto. Por ejemplo, en los problemas en los que la entrada es una secuencia y la salida un vector de longitud fija lo habitual es que la salida venga dada por \( o_{T} \) mientras que en el caso de que la entrada sea una entrada de longitud fija \( x \) y la salida sea una secuencia, esta puede construirse a partir de \( \Set{ o_{1}, …, o_{T} } \).
+
+Cuando la entrada y la salida son ambas secuencias que no necesariamente tienen la misma longitud, se utiliza una arquitectura \textit{codificador-decodificador}. El codificador, implementado mediante una red recurrente genera una representación de tamaño fija de la entrada, llamada estado o contexto, que sirve como entrada del decodificador, que generará la secuencia de salida de la red. Las funciones \( c, d \) asociadas al codificador y decodificador se definen implícitamente mediante ecuaciones de la forma:
+\begin{equation} \label{eq:encoder}
+    z_{t} = c(z_{t-1}, x_{t}; \theta) \qquad o_{t} = d(o_{t-1}, z_{t}; \theta)
+\end{equation}
+
+Para computar las redes recurrente lo habitual es aplicar \( T \) veces la \cref{eq:rnn}, construyendo así un grafo computacional con estructura cíclica, de forma que cada componente cíclica \textit{comparte parámetros} (\textit{parameter sharing}) con el resto. 
+
+Existen varios problemas con las redes recurrentes. Uno de ellos es que la cantidad de información sobre la secuencia de entrada que la red puede codificar en el vector de tamaño fijo \( z \) es limitada, lo que limita la capacidad de la red para recordar dependencias de larga longitud. 
+
+En segundo lugar, una vez desplegadas las redes recurrentes suelen ser extremadamente profundas y, dado que tienen poco parámetros, el efecto de cada parámetro en la salida de la red puede volverse muy pronunciado. Esto lleva a que se produzcan inestabilidades numéricas como el \textit{desvanecimiento} o la \textit{explosión} del gradiente, correspondientes respectivamente con los casos en que alguna de las derivadas parciales tiene una magnitud tan pequeña o tan grande que no puede ser representada mediante el punto flotante. 
+
+Además, las dependencias entre cómputos limitan la posibilidad de explotar el paralelismo, multiplicando el tiempo necesario para entrenar la red.
+
+Aunque estos problemas pueden mitigarse mediante diversas estrategias, son inherentes a la propia naturaleza de las redes recurrentes y limitan de forma decisiva la escalabilidad de estas arquitecturas. 
+
+Como veremos más adelante, la clave de los \textit{transformer} es precisamente la capacidad de adaptar las arquitecturas secuenciales, más fiables y eficientes, para abordar problemas de secuencias mediante el uso del mecanismo de atención, aplicando, ya directamente o de forma adaptada, muchas de las técnicas anteriormente utilizadas en el contexto de las redes recurrentes. 
+
+\section{Entrenamiento de modelos de lenguaje}
+Los modelos de lenguaje contemporáneos son redes neuronales con un número enorme de parámetros (por ejemplo, GPT-3 tiene más de 175 de millones). Esto hace que entrenar estos modelos sea extremadamente costoso y requiera una cantidad enorme de datos. Discutimos ahora dos técnicas utilizadas para abordar estos problemas. 
+
+\subsection{\textit{Teacher forcing}}
+En las primeras iteraciones del entrenamiento la red suele ser muy imprecisa, luego aplicar directamente la \cref{eq:encoder} lleva a generar una salida \( \Set{ o_{1}, …, o_{n_o} } \) muy distinta a la esperada. Esto provoca que los errores se acumulen, dificultando el entrenamiento. 
+
+La solución pasa por alimentar al decodificador durante el entrenamiento con la salida esperada para generar el siguiente símbolo, es decir sustituir la función del decodificador por:
+\[
+    o_{t} = d(y_{t-1}, z_{t}; \theta)
+\]
+método conocido como \textit{teacher forcing}. Esta estrategia acelera la convergencia y reduce la inestabilidad, pero puede llevar a problemas de sobre-ajuste, con lo que en fases posteriores del entrenamiento se suele dejar a la red acumular sus propios errores.
+
+\subsection{Aprendizaje no supervisado}
+Utilizar aprendizaje supervisado para entrenar estos modelos requeriría la creación de bases de datos etiquetadas de una escala enorme, lo que tendría un coste desorbitado. Por esta razón, lo habitual es pre-entrenarlos sobre corpus no etiquetados de texto utilizando la distribución de símbolos en el texto para estimar la función de probabilidad \( \mathbb{P} \). 
+
+\begin{definition}[Aprendizaje no supervisado]
+    Consideremos un conjunto de entrenamiento \( \mathbb{X} \subset \mathbb{V}^* \) y una red neuronal que computa la función de probabilidad \( \widehat{\mathbb{P}}(\smallbullet; \theta) \). 
+    
+    Dado \( l_\text{máx} > 0 \), el problema de aprendizaje no supervisado con tamaño de contexto \( l_\text{máx} \) se define como el problema de máxima verosimilitud:
+    \[
+        \max_{\theta \in \Theta} \sum_{x \in \mathbb{X}} \sum_i \log \widehat{\mathbb{P}} \left(x_{i} \mid x_{i-1}, …, x_{i-l_\text{máx}} \right)
+    \]
+\end{definition}
+
+\section{Grandes modelos de lenguaje (LLM)}
+Ya hemos comentado que una de las grandes ventajas de los modelos \textit{transformer} es que presentan excelentes capacidades de escalabilidad, volviéndose por lo general más precisos conforme aumenta el número de parámetros. Las estimaciones empíricas apuntan a que la eficacia de estas redes como modelos de lenguaje, medida mediante la entropía cruzada, escala según una ley potencial con el tamaño del modelo, el tamaño del conjunto de datos de entrenamiento y la cantidad de recursos computacionales usados durante el entrenamiento \cite{kaplan2020scaling}, sin que sean necesarias adaptaciones significativas en el diseño de las redes.
+
+Lo que resulta aún más sorprendente es que, una vez alcanzan una escala suficiente, estos modelos se vuelven capaces de llevar a cabo excelentemente tareas para las que no han sido entrenados, como resolver exámenes universitarios o realizar operaciones aritméticas encadenadas. 
+
+Las redes neuronales con estas propiedades se engloban bajo la difusa etiqueta de \textit\textit{grandes modelos del lenguaje} (\textit{large language models}) y estas capacidades se denominan \textit{habilidades emergentes}, dado que el rendimiento en estas tareas no puede predecirse a partir del de modelos más pequeños.
+
+Uno de los trabajos más interesantes al respecto, demostró que los grandes modelos de lenguaje eran capaces de aprender a utilizar herramientas en la forma de APIs (interfaces de programación de aplicaciones), como motores de búsqueda, diccionarios o calculadoras \cite{schick2023toolformer}.
+
+Los investigadores introdujeron unos cientos de ejemplos de llamadas a estas herramientas en el conjunto de entrenamiento y permitieron que el modelo, una versión de GPT con 6.7 mil millones de parámetros, anotara el conjunto de entrenamiento con propuestas de llamadas a las distintas herramientas. A continuación, ejecutaron las llamadas, introdujeron el resultado en el lugar que ocupaba la llamada y filtraron aquellas llamadas que no mejoraban el rendimiento del modelo sobre ese ejemplo concreto. Esto permite crear un nuevo conjunto de datos etiquetado con llamadas a las APIs con una fracción del coste que tendría crearlo a mano, sobre el que se puede reentrenar el modelo.
+
+Resulta fascinante que los grandes modelos de lenguaje puede aprender a realizar una nueva tarea incluso cuando los parámetros se han congelado mediante el mero procesamiento de ejemplos resueltos. Esta técnica recibe el nombre de \textit{few-shot learning} y se ha demostrado capaz de lograr resultados superiores a los de modelos específicamente afinados en multitud de tareas, como la traducción o la respuesta a preguntas \cite{brown2020language}).
+
+\subsection{Retos de los grandes modelos de lenguaje}
+Los grandes modelos de lenguaje presentan retos únicos. Uno de los más fundamentales es el \textit{problema de alineamiento}: conseguir que las redes neuronales compartan los objetivos, preferencias y principios éticos de los seres humanos. Por ejemplo, un modelo no debería hacer pasar por verdaderas afirmaciones que cree falsas o introducir vulnerabilidades de seguridad en el código.
+
+Se trata de un problema significativo, fundamentalmente porque los objetivos humanos son complejos y pueden ser difíciles de definir. Encontrar desviaciones en el comportamiento del modelo requiere hacer pruebas extensivas y es especialmente complicado en los campos en los que el rendimiento de los modelos es superior al de los humanos. Asegurar el alineamiento es especialmente difícil cuando se tiene poco control sobre el conjunto de datos, como es el caso cuando se usan grandes corpus de datos no supervisados. La solución suele ser afinar el modelo pre-entrenado sobre conjuntos de datos muy controlados.
+
+Un problema relacionado con el del alineamiento es el de la \textit{confiabilidad}. Se ha demostrado que los grandes modelos del lenguajes generan afirmaciones convincentes que son falsas y que no están sustentadas por ningún dato en el conjunto de entrenamiento, proceso conocido como \textit{alucinación}. El proceso por el que se generan las alucinaciones, que han sido identificadas como uno de los principales problemas de los grandes modelos de lenguaje, es escasamente comprendido y se está lejos de mitigarlas.
+
+De hecho, la incapacidad de los modelos de lenguaje actuales para mantener un conjunto estable de creencias en el tiempo, hace imposible distinguir si las alucinaciones son un problema de falta de   \textit{honestidad} (el sistema hace una afirmación que sabe que es falsa) o de mera falta de \textit{confiabilidad} (el sistema hace afirmaciones que considera incorrectamente ciertas).

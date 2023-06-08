@@ -1,0 +1,75 @@
+\chapter{Apéndice: redes neuronales}
+\section{Cálculo del gradiente en un perceptrón multicapa}
+supongamos que tenemos un perceptrón multicapa con \( n \) capas y, por simplificar, una muestra con un único elemento \( \mathcal{U} = \{ (x, y) \} \). 
+
+Denotamos la salida de la capa \( i \) como \( a^{(i)} \) donde:
+\begin{align*}
+    a^{(i)} = \sigma(z^{(i)}) & \qquad  z^{(i)} = W^{(i)} a^{(i-1)} + b^{(i)} & \text{ para \( i = 2, \dots, n\)}
+\end{align*}
+y denotando \( \nabla_x E = \frac{\partial E}{\partial x} \) es sencillo comprobar que se cumplen las relaciones:
+\begin{align*}
+    &\nabla_{z^{(n)}} E = \sigma'(z^{(n)}) \odot L'(a^{(n)}, y) \\
+    &\nabla_{z^{(i)}} E = \sigma'(z^{(i)}) \odot \left( (W^{(i+1)})^T \nabla_{z^{(i + 1)}} E \right) & \text{ para \( i = 2, \dots, n-1\)} \\
+    &(\nabla_{b^{(i)}} E)_j = (\nabla_{z^{(i)}} E)_j \\
+    &(\nabla_{W^{(i)}})_{j, k} = (\nabla_{z^{(i)}} E)_j a^{(i -1)}_k
+\end{align*}
+con lo que el gradiente puede calcularse de forma recursiva.
+
+\begin{algorithm}[tb]
+    \SetAlgoLined
+    \KwData{$(W_{i})_{i = 1}^n$, matrices de pesos}
+    \mydata{$(b_{i})_{i = 1}^n$, sesgos}
+    \mydata{$x$, la entrada a la red}
+    \mydata{$y$, el valor esperado}
+    \mydata{$l$, la función de coste}
+    $h_{0} \gets x $\;
+    \For{$k = 1, \dots, n$}{
+        $z_{k} \gets b_{k} + W_{k}h_{k-1}$\;
+        $a^{(k)} \gets \sigma(z_{k}$)\;}
+    $\widehat{y} \gets a_{k}$\;
+    $J \gets L(\widehat{y}, y) + \lambda \Omega(\theta)$\;
+    \caption{Propagación hacia delante en un perceptrón multicapa}
+    \label{algo:forward}
+\end{algorithm}
+
+\begin{algorithm}[tb]
+    \SetAlgoLined
+    \KwData{$E$, la función de coste}
+    \mydata{$(W_{i})_{i = 1}^n$, matrices de pesos}
+    \mydata{$(b_{i})_{i = 1}^n$, sesgos}
+    \mydata{$\Omega$, la función de regularización}
+    \mydata{$\epsilon$, la tasa de aprendizaje}
+    \mydata{$\lambda$, la tasa de regularización}
+    $g \gets \nabla_{\widehat{y}} E$\;
+    \For{$k = n, n-1, \dots, 1$}{
+        $g \gets \nabla_{z_{k}} E = \sigma'(z_{l}) \odot g$\;
+        $\nabla_{b_{k}} E = g + \lambda \nabla_{b_{k}} \Omega(\theta)$\;
+        $\nabla_{W_{k}} E = g a_{k-1} + \lambda \nabla_{W^{(k)}} \Omega(\theta)$\;
+        $g \gets \nabla_{a_{k-1}} E = (W^{(k)})^T g$\;
+    }
+    \tcp{Se propagan los cambios a los parámetros}
+    \For{$k = 1, \dots, n$}{
+        $W_{k} \gets W_{k} - \epsilon \nabla_{W_{k}} E$\;
+        $b_{k} \gets b_{k} - \epsilon \nabla_{b_{k}} E$\;
+    }
+    \caption{Propagación hacia atrás en un perceptrón multicapa usando descenso de gradiente}
+    \label{algo:backward}
+\end{algorithm}
+
+
+Cabe mencionar que los modelos de propósito general, como ChatGPT, no son capaces de imitar el estilo ni el lenguaje de la época, aunque son mucho más eficaces manteniendo el contexto:
+
+\begin{code}
+    \centering
+    \begin{minted}[breaklines,fontsize={\fontsize{10.5}{11.5}\selectfont}]{text}
+    DON PEDRO: "Querido amigo, llego hoy a Madrid. Espero veros en vuestra casa esta tarde. ¡Cuánto tiempo ha pasado desde la última vez que nos vimos! Vuestra amiga fiel, Leonor." ¡Leonor ha llegado a Madrid!
+    
+    DOÑA INÉS: ¡Oh, Don Pedro! ¿Qué os trae por aquí en este día tan soleado?
+    
+    DON PEDRO: ¡Mirad, Doña Inés! Leonor ha llegado a Madrid. Ha venido a visitarnos.
+    
+    DOÑA INÉS: ¡Qué alegría! ¡Leonor siempre ha sido tan amable con nosotros!
+    \end{minted}
+    \caption{Texto generado por ChatGPT en respuesta a la pregunta "¿Puedes escribir una conversación en el estilo de las comedias de Lope de Vega?"}
+    \label{fig:chatgpt}
+\end{code}
