@@ -3,11 +3,11 @@
 
 % Notación
 \renewcommand\nomgroup[1]{%
-  \item[\bfseries
+  \item[\bfseries%
   \ifstrequal{#1}{A}{Análisis}{%
   \ifstrequal{#1}{L}{Álgebra lineal}{%
-  \ifstrequal{#1}{E}{Estadística}{
-  \ifstrequal{#1}{C}{Computación}{
+  \ifstrequal{#1}{E}{Estadística}{%
+  \ifstrequal{#1}{C}{Computación}{%
   }}}}%
 ]}
 \renewcommand{\nompreamble}{En esta sección se describe el significado de los símbolos y la notación presente en este trabajo:}
@@ -16,7 +16,6 @@
 
 % Bibliography
 \addbibresource{references.bib}
-
 \setlength{\abovedisplayskip}{3mm}
 \setlength{\belowdisplayskip}{3mm}
 \setlength{\abovedisplayshortskip}{0mm}
@@ -24,6 +23,7 @@
 %%%% Lengths
 
 \pagestyle{plain}
+
 \begin{document}
     \setcounter{page}{-1}
     \input{cover}
@@ -53,5 +53,6 @@
     ]
     \appendix
     \input{appendixA}
+    % \input{appendixB}
 
 \end{document}

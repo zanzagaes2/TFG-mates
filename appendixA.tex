@@ -8,8 +8,8 @@ La implementación de la atención multicabezal puede hacerse de forma muy simil
 class MultiheadAttention(Module):
   def __init__(self, d_embedding, n_head, dropout, block_size):
     super().__init__()
-    self.config.d_embedding = d_embedding
-    self.config.n_head = n_head
+    self.d_embedding = d_embedding
+    self.n_head = n_head
 
     self.c_attn = nn.Linear(config.d_embedding, 3 * d_embedding)
     self.c_proj = nn.Linear(config.d_embedding, d_embedding)
@@ -20,10 +20,10 @@ class MultiheadAttention(Module):
 
   def forward(self, x):
     B, N, D = x.size()
-    q, k, v = self.c_attn(x).split(self.config.d_embedding, dim=2)
-    q = q.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
-    k = k.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
-    v = v.view(B, N, self.config.n_head, D // self.config.n_head).transpose(1, 2)
+    q, k, v = self.c_attn(x).split(self.d_embedding, dim=2)
+    q = q.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
+    k = k.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
+    v = v.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
 
     attn = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
     attn = softmax(attn.masked_fill(self.attn_mask[:,:,:T,:T] == 0, float('-inf')))
@@ -50,12 +50,12 @@ def MLP(d_embedding, dropout):
   ]))
 
 class Block(nn.Module):
-  def __init__(self, d_embedding, dropout):
+  def __init__(self, d_embedding, n_head, dropout, block_size):
     super().__init__()
     self.ln_1 = LayerNorm(d_embedding)
-    self.attn = MultiheadAttention(d_embedding)
+    self.attn = MultiheadAttention(d_embedding, n_head, dropout, block_size)
     self.ln_2 = LayerNorm(d_embedding)
-    self.mlp = MLP(dropout)
+    self.mlp = MLP(d_embedding, dropout)
 
   def forward(self, x):
     x = x + self.attn(self.ln_1(x))
@@ -69,13 +69,14 @@ class Block(nn.Module):
 \begin{code}
 \begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
 class GPT(Module):
-  def __init__(self, d_embedding, n_layer, n_embd, vocab_size, block_size):
+  def __init__(self, d_embedding, n_layer, n_embd, vocab_size, block_size, dropout):
     self.transformer = nn.ModuleDict(dict(
       wte = Embedding(vocab_size, d_embedding),
       wpe = Embedding(block_size, d_embedding),
       drop = Dropout,
-      h = ModuleList([Block(config) for _ in range(n_layer)]),
-    ln_f = LayerNorm(n_embd)))
+      h = ModuleList([Block(d_embedding, n_head, dropout, block_size) 
+        for _ in range(n_layer)]),
+      ln_f = LayerNorm(n_embd)))
     self.lm_head = nn.Linear(config.d_embedding, config.vocab_size, bias = False)
 
   def forward(self, x):

@@ -1,45 +1,99 @@
-\chapter{Generación de texto al estilo de Lope de Vega: \textit{GPT}}
+\chapter{\textit{GPT}: generación de texto al estilo de Lope de Vega}
 El codificador y el decodificador presentes en el diseño del \textit{transformer} pueden utilizarse por separado para abordar problemas en los que únicamente la entrada o la salida son una secuencia. 
 
 Un ejemplo son los modelos generativos decodificadores, diseñados para generar una secuencia de símbolos a partir de un modelo de lenguaje aprendido y de los símbolos ya generados, que únicamente utilizan bloques de tipo decodificador. Una de las familias de modelos generativos más influyentes es GPT, nacida en 2018 con la creación de GPT-1 \cite{radford2018improving}.
 
-En el momento de su creación, GPT-1, un modelo razonablemente sencillo basado en doce bloques de tipo decodificador encadenados, logró superar ampliamente a modelos anteriores en una variedad de tareas, como el razonamiento general o la respuestas a preguntas. Una innovación fundamental fue el uso de aprendizaje no supervisado: en lugar de depender íntegramente de bases de datos etiquetados como era habitual, GPT-1 fue entrenado de forma no supervisada sobre grandes \textit{corpus} de texto, provenientes de novelas. La red luego puede reentrenarse (\textit{finetuning}) de forma supervisada sobre conjuntos etiquetados de texto para adaptarla a tareas específicas.
+En el momento de su creación, GPT-1, un modelo razonablemente sencillo basado en doce bloques de tipo decodificador encadenados, logró superar ampliamente a modelos anteriores en una variedad de tareas, como el razonamiento general o la respuesta a preguntas. Una innovación fundamental fue el uso de aprendizaje no supervisado: en lugar de depender íntegramente de bases de datos etiquetados como era habitual, GPT-1 fue entrenado de forma no supervisada sobre grandes \textit{corpus} de texto. La red luego puede reentrenarse (\textit{finetuning}) de forma supervisada sobre conjuntos etiquetados de texto para adaptarla a tareas específicas.
 
-Solo un año después de la publicación de GPT-1, se presentó GPT-2, un modelo con 1.5 mil millones de parámetros que demostró por primera vez de forma clara la aparición de habilidades emergentes \cite{radford2019language}. La arquitectura de GPT-2 es prácticamente una versión escalada de GPT-1 con más parámetros y mayor longitud de contexto, salvo por cambios mínimos en la inicialización de los parámetros y en la forma de normalizar las capas. Aun así, supera a GPT-1 (y a la práctica mayoría de modelos existentes en ese momento) en una varidad de tareas, incluyendo el resumen de textos, la traducción de inglés a francés, el razonamiento de sentido común o la comprensión lectora.
+El \cref{algo:gpt} muestra una descripción en pseudocódigo de GPT. Los bloques de GPT funcionan de forma prácticamente idéntica a los bloques decodificador del \textit{transformer}, salvo por la desaparición de la capa asociada a la atención cruzada y la sustitución de $\relu$ por $\gelu$ como función de activación \footnote{$\gelu(x) \equiv x \cdot \Phi(x)$ siendo $x$ la función de distribución de la Gaussiana. Se trata de una versión suavizada de $\relu$, ya que admite derivadas de todos los órdenes.}.
 
-El \Cref{appendixA} presenta una implementación completa de la familia de modelos GPT, que puede implementarse elegantemente en unos pocos cientos de líneas.
+Solo un año después de la publicación de GPT-1, se presentó GPT-2, un modelo con 1.5 mil millones de parámetros que demostró por primera vez de forma clara la aparición de habilidades emergentes \cite{radford2019language}. La arquitectura de GPT-2 es prácticamente una versión escalada de GPT-1 con más parámetros y mayor longitud de contexto, salvo por cambios mínimos en la inicialización de los parámetros y en la forma de normalizar las capas. Aun así, supera a GPT-1 (y a la práctica mayoría de modelos existentes en ese momento) en una variedad de tareas, incluyendo el resumen de textos, la traducción de inglés a francés, el razonamiento de sentido común o la comprensión lectora.
+
+El \Cref{appendixA} presenta una implementación completa de la familia de modelos GPT, que puede programarse elegantemente en unos pocos cientos de líneas.
+
+\begin{algorithm}[tbph]
+  \SetAlgoLined
+  \KwData{$x \in \mathbb{V}^*$, secuencias de símbolos con longitud \( l_z, l_x\)}
+  \KwResult{$P \in (0, 1)^{|\mathbb{V}| × l_x}$ donde $P_{i, j} = \widehat{P}\left( x[j + 1] = i \mid x[1:j], z; \theta \right) $}
+  \KwHyper{$l_\text{max}$: longitud máxima de secuencia}
+  \mydata{$L_\text{dec}$, número de bloques decodificador}
+  \mydata{$H$, número de cabezales de atención}
+  \mydata{$d_e, d_\text{mlp}$ dimensión de la representación y de las capas neuronales}
+  \KwParams{$\theta$ que incluye}
+  \mydata{$W^e \in \real{d_e × |\mathbb{V}|}, W^p \in \real{d_e × l_\text{max}}$, matrices de tokenización}
+  \mydata{para $l = 1, …, L_\text{dec}$}
+  \mydatal{$\mathfrak{W}_l^\text{dec}$, parámetros de la atención multicabezal}
+  \mydatal{$\gamma_l^1, \beta_l^1, \gamma_l^2, \beta_l^2 \in \real{d_e}$, parámetros de normalización de capa}
+  \mydatal{$W_l^1 \in \real{d_\text{mlp} × d_e}, b_l^1 \in \real{d_\text{mlp}}, W_l^2 \in \real{d_e × d_\text{mlp}}, b_l^2 \in \real{d_e}$, parámetros  neuronales}
+  \mydatal{$\gamma, \beta$, parámetros de normalización de capa final}
+  \mydatal{$W_u \in \real{|\mathbb{V}| \times d_e}$, inversa de la matriz de tokenización}
+
+  $X \gets [e_1, …, e_{l_x}]$ con $e_t = W^e[:, x[t]] + W^p[:, t]$\;
+  \For{$l = 1, …, L_\text{dec}$}{
+      Definimos $M \in \real{l_x × l_x}$ tal que $M_{ij} = \llbracket i \leq j \rrbracket$\;
+      para $t = 1, …, l_x$: $\widetilde{X}[:, t] \gets \LN(X[:, t] \mid \gamma_l^1, \beta_l^1)$\;
+      $X \gets X + \mmultihead(\widetilde{X}, \widetilde{X}, \widetilde{X}, M; \mathfrak{W}_l^\text{dec})$\;
+      para $t = 1, …, l_x$: $\widetilde{X}[:, t] \gets \LN(X[:, t] \mid \gamma_l^2, \beta_l^2)$\;
+      $X \gets X + W_l^2 \gelu(W_l^1 X + b_l^1) + b_l^2 $\;
+  }
+  para $t = 1, …, l_x$: $X[:, t] \gets \LN(X[:, t] \mid \gamma, \beta)$\;
+  \Return{$P = \softmax(W_u X)$}
+  \caption{$\texttt{GPT}(x \mid \theta)$\cite{phuong2022formal}}
+  \label{algo:gpt}
+\end{algorithm}
 
 \section{Generando texto al estilo de Lope de Vega}
+Abordamos ahora el problema que nos hemos propuesto: entrenar una red para generar texto al estilo de Lope de Vega utilizando GPT. Con ese propósito se ha creado un conjunto de datos con alrededor de 51.000 líneas de texto plano, provenientes de distintas obras dramáticas. A fin de homogeneizar el texto y facilitar el entrenamiento se han mantenido únicamente los diálogos eliminando acotaciones, notas y textos accesorios, como los prólogos. También se han unificado los símbolos ortográficos, a fin de no ampliar el tamaño del vocabulario sin necesidad.
 
-\begin{figure}[tb]
-    \centering
-    \begin{subfigure}[b]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/chapter5/loss.png}
-        \caption{Entrenamiento de GPT-1}
-        \label{fig:loss}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/chapter5/loss_big.png}
-        \caption{Entrenamiento de GPT-1}
-        \label{fig:loss_big}
-    \end{subfigure}
-    \caption{Pérdida sobre el conjunto de entrenamiento y validación a lo largo del entrenamiento.}
-\end{figure}
+El conjunto de datos se ha dividido en un conjunto de entrenamiento con el \( 90\% \) de los caracteres y un conjunto de validación con el \( 10\% \) restante. Dado que no se va a evaluar el rendimiento del modelo posteriormente y el tamaño del conjunto de datos es limitado, se prescinde de un conjunto de prueba.
 
-Abordamos ahora el problema que nos hemos propuesto: entrenar la red para generar texto al estilo de Lope de Vega utilizando GPT. Con ese propósito se ha creado un conjunto de datos con alrededor de 51.000 líneas de texto plano, provenientes de distintas obras dramáticas. A fin de homogeneizar el texto y facilitar el entrenamiento se han mantenido únicamente los diálogos eliminando acotaciones, notas y textos accesorios, como los prólogos. También se han unificado los símbolos ortográficos, a fin de no ampliar el tamaño del vocabulario sin necesidad.
+\begin{algorithm}[tb]
+  \SetAlgoLined
+  \KwData{$\Set{x_n}_{n = 0}^N$, con $x_n \in \mathbb{V}^*$, conjunto de entrenamiento}
+  \mydata{$\theta \in \Theta$, parámetros iniciales}
+  \KwHyper{$\Lambda$, parámetros de Adam (\cref{algo:adam})}
+  \mydata{$N_\text{iter}$, número de iteraciones}
+  \mydata{$N_\text{lote}$, tamaño de minilote}
 
-El conjunto de datos se ha dividido en un conjunto de entrenamiento con el \( 90\% \) de los caracteres y un conjunto de validación con el resto. Dado que no se va a evaluar el rendimiento del modelo posteriormente y el tamaño del conjunto de datos es limitado, se prescinde de un conjunto de prueba.
+  \For{$t = 1, …, N_\text{iter}$} {
+    Muestrear un minilote: $\Set{x_{1}, …, x_{N_\text{lote}}}$ \;
+    para $n = 1, …, N_\text{lote}$: $P(\theta)[n, :, :] \gets \texttt{GPT}(x_n \mid \theta)$ \;
+    $L(\theta) = \sum_{n = 1}^{N_\text{lote}} \sum_{t = 1}^{|x_n| - 1} \log(P(\theta))[n, x_n[t + 1], t]$ \;
+    $\theta \gets \texttt{Adam}(\theta, L; \Lambda)$ \;
+  }
+  \Return{$\theta$}
 
-A fin de poder entrenar con facilidad, nos hemos decidido por un modelo de GPT muy sencillo, formado por seis bloques de tipo decodificador y con atención multicabezal con seis cabezas. Los símbolos son caracteres, representados internamente usando 384 dimensiones. La longitud de contexto es 256. El modelo tiene un total de \( 10.65 \) millones de parámetros
+  \caption{Entrenamiento de GPT usando Adam}
+  \label{algo:gpt_train}
+\end{algorithm}
 
-El modelo se ha entrenado de modo no supervisado utilizando el método de optimización \textit{Adam} (\( \epsilon = 10^{-3}, (\beta_1, \beta_2) = (0.99, 0.999) \)) durante un total de \( 5.000 \) iteraciones y eligiendo la configuración de parámetros que minimiza la verosimilitud logarítimica sobre el conjunto de validación. El modelo converge adecuadamente, como muestra la \cref{fig:loss}.
+\begin{algorithm}[tb]
+  \SetAlgoLined
+  \KwData{$\theta$, parámetros (tras el entrenamiento)}
+  \mydata{$x \in \mathbb{V}^*$, texto de estímulo con longitud $l_x$}
+  \KwHyper{$\tau \in (0, \infty)$, temperatura}
+  \mydata{$l_\text{gen} \in \nat$, símbolos generados}
+  \KwResult{$y \in \mathbb{V}^*$, texto generado}
 
-Presentamos a continuación algunas muestras del texto generado por la red. En el segundo caso, se utiliza el texto de estímulo para interactuar con la red: 
+  \For{$i = 1, …, l_x$} {
+    $P \gets GPT(x; \theta)[:, l_x + i - 1]$ \;
+    Tomar una muestra de una variable $Y$ con $\mathbb{P}(Y) \propto P^{1 / \tau}$ \;
+    $x \gets [x, y]$ \;
+  }
+  \Return{$y = x[l_x + 1: l_x + l_\text{gen}]$}
+
+  \caption{Generación de texto usando GPT}
+  \label{algo:gpt_inference}
+\end{algorithm}
+
+A fin de poder entrenar con facilidad, nos hemos decidido por un modelo de GPT muy sencillo, formado por seis bloques de tipo decodificador con atención multicabezal con seis cabezales. Los símbolos son caracteres, representados internamente usando 384 dimensiones. La longitud de contexto es 256. El modelo tiene un total de \( 10.65 \) millones de parámetros.
+
+El modelo se ha entrenado de modo no supervisado utilizando el método de optimización \textit{Adam} (\( \epsilon = 10^{-3}, (\beta_1, \beta_2) = (0.99, 0.999) \)) durante un total de \( 5.000 \) iteraciones siguiendo el esquema presente en el \cref{algo:gpt_train}.
+
+Presentamos a continuación algunas muestras del texto generado por la red, utilizando el \cref{algo:gpt_inference}, que implementa la estrategia comentada en la \cref{sec:gen}. En el segundo caso, se utiliza el texto de estímulo para interactuar con la red: 
 
 \noindent
-\begin{table}[h]
+\begin{table}[H]
   \centering
   \begin{tabular}{ ll }
     \begin{Code}
@@ -95,13 +149,11 @@ Los resultados son poco sorprendentes, toda vez que estamos intentando que un mo
 \section{Afinando GPT-2 (\textit{finetuning})}
 Los dos problemas anteriores (lo limitado del modelo y lo escaso del conjunto de entrenamiento) pueden aliviarse utilizando modelos pre-entrenados más grandes. Este modelo pre-entrenado se re-entrena o \textit{afina} (\textit{fine-tune}) sobre nuestro conjunto de entrenamiento, para adaptarlo a la tarea específica. Este segundo entrenamiento no necesita ser tan intensivo como si entrenásemos la red desde cero, pues las representaciones iniciales de la red deberían ser cercanas a las finales, lo que permite ahorrar recursos computacionales y utilizar modelos de mucho mayor tamaño.
 
-Utilizaremos un modelo GPT-2, constituido por 12 bloques de tipo decodificador, cada uno con una atención multicabezal con 12 cabezas. La dimensión de las representación es 768 y la longitud de contexto es 1024. La división en símbolos se hace esta vez a nivel de palabra.
+Utilizaremos un modelo GPT-2, constituido por 12 bloques de tipo decodificador, cada uno con una atención multicabezal con 12 cabezas. La dimensión de las representación es 768 y la longitud de contexto es 1024. La división en símbolos se hace esta vez a nivel de palabra. A fin de aliviar el sobreajuste utilizamos abandono, con un valor de \( p = 0.1 \).
 
-
-Partimos de una versión pre-entrenada sobre un corpus de texto de 11.5 GB, de diferentes fuentes\cite{gpt2trained} y entrenamos el modelo utilizando Adam durante 3.750 iteraciones. Como es de esperar para un modelo tan complejo entrenado sobre un conjunto tan pequeño, el modelo muestra un claro sobre-ajuste (\cref{fig:loss_big}) aunque converge adecuadamente sobre el conjunto de validación. 
+Partimos de una versión pre-entrenada sobre un corpus de texto de 11.5 GB, de diferentes fuentes\cite{gpt2trained} y entrenamos el modelo utilizando Adam durante 3.750 iteraciones. Como es de esperar para un modelo tan complejo entrenado sobre un conjunto tan pequeño, el modelo muestra un claro sobre-ajuste aunque converge adecuadamente sobre el conjunto de validación.
 
 Los resultados obtenidos son mucho más prometedores:
-
 \noindent
 \begin{table}[H]
   \centering

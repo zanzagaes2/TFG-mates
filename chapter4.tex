@@ -5,7 +5,7 @@ El mecanismo de atención hereda la distinción entre \textit{codificador} y \te
 
 Diseñando el proceso de asignación de pesos como una función diferenciable, el problema de la distribución óptima de los pesos puede resolverse como un problema de optimización usando, por ejemplo, descenso de gradiente. En este capítulo se formaliza la noción de atención y se discuten algunas de sus variantes.
 
-\section{Autoatención}
+\section{Atención}
 
 \begin{definition}[Base de datos]
     Sean \( d_k, d_v \in \nat \) y dos sucesiones \( \Set{ k_i }_{i = 1}^m \) con \( k_i \in \real{d_k} \), \( \Set{v_i}_{i = 1}^m \) con  \( v_ i \in \real{d_v} \), que llamaremos \textit{claves} y \textit{valores} respectivamente. Llamamos \textit{base de datos} al conjunto ordenado \( \mathcal{D} = \left\{ (k_i, v_i) \colon i = 1, …, m \right\} \),
@@ -25,28 +25,80 @@ Los coeficientes \( \alpha(q, k_i) \) determinan la ponderación de cada valor d
 
 Es común imponer las condiciones \( \sum_i \alpha(q, k_i) = 1 \), \( \alpha(q, k_i) \geq 0\) de forma que el vector de atención sea una combinación convexa de los valores.
 
+\section{El estimador de Nadaraya-Watson}
+Presentamos a continuación un ejemplo del mecanismo de atención aplicada a problemas de regresión: el estimador de Nadaraya-Watson \cite{watson1964smooth, nadaraya1964estimating}.
+
+Nos encontramos en el marco habitual de un problema de regresión: disponemos de un conjunto de características observadas \( \Set{x_{n}}_{n = 1}^N \) con \( x_{n}  \in \real{k} \) y un vector \( y \in \real{N} \) que recoge el valor de la variable objetivo para cada una de las observaciones. Dada una nueva observación \( x_{0} \), queremos aproximar el valor de la variable objetivo \( y_{0} \) mediante un estimador \( \widehat{y}_{0} \).
+
+Definimos la base de datos \( \mathcal{D} = \left\{ (x_{i}, y_{i}) : i = 1, \dots, N \right\} \). Consideramos una función \( \alpha \) normalizada entre \( 0 \) y \( 1 \), esto es:
+\[
+    \alpha(q, k_{i}) = \frac{a(q, x_{i})}{\sum_j \alpha(q, x_{j}) }
+\]
+para alguna función \( a : \real{n} \times \real{n} \to \realo \). La atención de \( q \) sobre \( \mathcal{D} \) es:
+\[
+    \attention(q, \mathcal{D}; \alpha) = \sum_i  \alpha(q, x_{i}) y_{i} = \sum_i \frac{a(q, x_{i})}{\sum_j \alpha(q, x_{j})} y_{i}
+\]
+
+Podemos ahora aproximar \( y_{0} \) mediante el estimador 
+\begin{equation}\label{eq:kde}
+    \widehat{y}_{0} = \left\langle y, \attention(x_{0}, \mathcal{D}; \alpha) \right\rangle
+\end{equation}
+
+La \cref{fig:regression} muestra el resultado de estimar la distribución de \( n = 100 \) puntos de la forma \( (x_{i}, y_{i}) \) siendo \( (x_{i}) \) una sucesión ordenada de puntos en \( [0, 5] \), \( y_{i} = x_{i} + \sin(x_{i}) + \epsilon \) con \( \epsilon \sim \mathcal{N}(0, 1) \). Para ello, utilizamos una partición equiespaciada \( x^\text{val}_{i} \) de \( [0, 5] \) con 100 puntos y estimamos \( \widehat{y}^\text{val} \) usando la \cref{eq:kde} con varios \textit{kernel} de similitud distintos:
+\[
+    \begin{split}\begin{aligned}
+    a(q, k) & = \exp\left(-\frac{1}{2} \|q - k\|^2 \right) && \mathrm{Gaussiana} \\
+    a(q, k) & = \begin{cases}
+        1 &\text{ si } \|q - k\| \leq 1 \\
+        0 &\text{ si no}
+    \end{cases} && \mathrm{Boxcar}
+    \\
+    a(q, k) & = \max\left(0, 1 - \|q - k\|\right) && \mathrm{Epanechikov}
+    \end{aligned}\end{split}
+\]
+
+La estimación es notablemente precisa, aunque la suavidad de la estimación depende del tipo concreto de \textit{kernel} escogido. La \cref{fig:kernel} muestra una visualización de los pesos de atención: observamos que las magnitudes mayores se concentran en torno a la diagonal, dado que \( x^\text{val}_{i} \simeq x^j \) para índices \( i, j \) cercanos. 
+
+\begin{figure}[tb]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/regression.png}
+    \caption{Estimación de la función \( y \) mediante la estimación del valor de la variable objetivo sobre una partición equiespaciada del intervalo \( [0, 5] \) usando tres kérneles de similitud distintos.}
+    \label{fig:regression}
+\end{figure}
+
+Esta forma de utilizar la atención es una forma de \textit{estimación de densidad de kernel}, una técnica clásica de inferencia no paramétrica que tiene la ventaja de que no requiere de ningún entrenamiento. Existen diversas heurísticas para elegir el \textit{kernel} \cite{silverman1986density} y puede probarse que si la anchura del \textit{kernel} se ajusta adecuadamente conforme se añaden observaciones entonces el método converge al valor real \( \E \llbracket y | x = x \rrbracket \) \cite{mack1982weak}.
+
+\begin{figure}[tb]
+    \centering
+    \includegraphics[width=\textwidth]{figures/chapter4/kernel.png}
+    \caption{Visualización de los pesos de atención. Cada fila representa uno de los puntos aproximados y cada columna una componente del vector de atención. El color representa la magnitud de la componente.}
+    \label{fig:kernel}
+\end{figure}
+
+El estudio del estimador de Nadaraya-Watson cumple un triple propósito: en primer lugar, muestra la flexibilidad de los métodos de atención y su relación con métodos clásicos de inferencia estadística. En segundo lugar, sirve para exhibir una de los grandes atributos de los métodos de atención: la posibilidad de visualizar los pesos de atención a fin de poder entender el funcionamiento del modelo. En tercer lugar, muestra lo decisivo de realizar una buena elección de la representación de la base de datos (claves y valores). En última instancia, la complejidad de elegir representaciones adecuadas lleva a diseñar esta representación de forma que sea \textit{aprendida} como una parte más de los parámetros del modelo.
+
 \section{Funciones de similitud}
 Los mecanismos de atención son conceptualmente independientes de la función de similitud concreta escogida. Existen varias razones, no obstante, por las que merece la pena detenerse a estudiar algunas de las posibles funciones de similitud. En primer lugar, elegir una función de similitud es imprescindible para poder realizar un análisis riguroso de la complejidad computacional asintótica de la operación de atención. En segundo lugar, la elección de una buena función de similitud es una condición imprescindible para que la atención pueda ser utilizada para resolver problemas.
 
-La función de similitud dominante es el producto escalar normalizado. Partamos del caso en el que tenemos una serie de consultas \( \Set{ q_1, …, q_n \}\) y una base de datos \( \mathcal{D} = \{(k_i, v_i)_i = 1, …, m}\) de forma que consultas, claves y valores son vectores con la misma dimensión. Consideremos el logaritmo del \textit{kernel} de atención Gaussiano para una consulta \( q \) y una clave \( k_{i} \):
+La función de similitud dominante es el producto escalar normalizado. Partamos del caso en el que tenemos una serie de consultas \( \Set{ q_1, …, q_n} \) y una base de datos \( \mathcal{D} = \Set{(k_i, v_i)}_{i = 1}^m \) de forma que consultas, claves y valores son vectores con la misma dimensión. Consideremos el logaritmo del \textit{kernel} de atención Gaussiano para una consulta \( q \) y una clave \( k_{i} \):
 \[
     a(q, k_i) = -\frac{1}{2} \|q - k_i\|^2  = q^T k - \frac{1}{2} \| k_i \|^2 - \frac{1}{2} \| q \|^2
 \]
 
-En líneas generales, las redes neuronales contemporáneas están severamente normalizadas. Esto permite omitir el último término, dado que solo depende de \( q \). También el penúltimo término puede eliminarse sin demasiada repercusión, pues la normalización de la red asegurará que la norma \( \| k_i \| \) de todas las claves será aproximadamente constante.
+Las redes neuronales contemporáneas están severamente normalizadas, lo que permite omitir el último término, que solo depende de \( q \). También el penúltimo término puede eliminarse sin demasiada repercusión, pues la normalización de la red asegurará que la norma \( \| k_i \| \) de todas las claves será aproximadamente constante.
 
 La función de producto escalar normalizado se obtiene normalizando el resultado, de forma que si suponemos que \( q, k \in \real{d} \) son vectores independientes e idénticamente distribuidos con media \( 0 \) y varianza \( 1 \) el \textit{kernel} también tenga media \( 0 \) y varianza \( 1 \).
 
 \begin{definition}[Producto escalar normalizado]
 Dada una consulta \( q \in \real{d}\) y un conjunto de claves \( (k_i)_{i = 1}^n \) con \( k_i \in \real{d} \) definimos la función de similitud de producto escalar normalizado como:
 \[
-    \alpha(q, k_{i}) = \frac{\exp \left\{q^t \frac{k_{i}}{\sqrt{d}} \right\}}{\sum_j \exp \left\{ q^t \frac{k_{j}}{\sqrt{d}} \right\}}
-\]
+    \alpha_\text{dot}(q, k_{i}) = \frac{\exp \left\{q^t \frac{k_{i}}{\sqrt{d}} \right\}}{\sum_j \exp \left\{ q^t \frac{k_{j}}{\sqrt{d}} \right\}}
+\]  
 \end{definition}
 
-Esta función de atención tiene excelentes propiedades computacionales pues si agrupamos las consultas, claves y valores en matrices \( Q, K, V \) entonces:
+Esta función de atención tiene excelentes propiedades computacionales pues si agrupamos las consultas, claves y valores en matrices \( Q = [q_1, …, q_{n_q}], K = [k_1, …, k_n], V = [v_1, …, v_n] \) entonces:
 \begin{equation} \label{eq:dot_product}
-    \attention(Q, \mathcal{D}) = \softmax(\frac{K^TQ}{\sqrt{d}}) V
+    \attention(q_i, \Set{ (k_{n}, v_{n})}; \alpha_\text{dot}) = V \softmax \left( \frac{K^T Q}{\sqrt{d}} \right) e_i
 \end{equation}
 expresión que puede calcularse de forma extremadamente eficiente.
 
@@ -68,19 +120,19 @@ En los modelos diseñados para el procesamiento de lenguaje natural, las consult
 Se introduce para ello una variante de la atención llamada \textit{atención multicabezal}, que parte de la idea de crear distintos \textit{cabezales} de atención cada uno de los cuales trabaje con proyecciones distintas de la base de datos. Formalizamos esta idea:
 
 \begin{definition}[Cabezal de atención (\textit{attention head})]
-    Sea \( q \in \real{d_q} \) una consulta, \( k \in \real{d_k} \) una clave y \( v \in \real{d_v} \) un valor. Sean \( p_q, p_k, p_v \in \nat \) y \( \alpha \colon \real{p_q} \times \real{p_k} \to \realo \) una función de similitud. Dadas matrices \( W^q \in \real{p_q \times d_q}, W^k \in \real{p_k \times d_k}, W^v \in \real{p_v \times d_v} \) definimos un cabezal de atención \( H \) como la función:
+    Sea \( q \in \real{d_q} \) una consulta, y \( \mathcal{D} = \Set{(k_n, v_n)} \) con \( k_n \in \real{d_k}, v_n\in \real{d_v} \) una base de datos. Sean \( p_q, p_k, p_v \in \nat \) y \( \alpha \colon \real{p_q} \times \real{p_k} \to \realo \) una función de similitud. Dadas matrices \( W^q \in \real{p_q \times d_q}, W^k \in \real{p_k \times d_k}, W^v \in \real{p_v \times d_v} \) definimos un cabezal de atención \( H \) como la función:
     \begin{equation} \label{eq:head}
-        \head(q, k, v; W^q, W^k, W^v, \alpha)  = \attention(W^q q, \Set{W^k k,  W^v v }; \alpha)
+        \head(q, \mathcal{D}; W^q, W^k, W^v, \alpha)  = \attention(W^q q, \Set{(W^k k_n,  W^v v_n)}; \alpha)
     \end{equation}
 \end{definition}
 
 Al combinar los cabezales de atención se obtiene una \textit{atención multicabezal}
 \begin{definition}[Atención multicabezal (\textit{multihead attention})]     
-     Sean \( (\head_{i})_{i = 1}^{n_h} \) cabezales de atención con parámetros \( \theta_{i} = \Set{ W^q_{i}, W^k_{i}, W^v_{i}, \alpha } \). Dado \( p_o \in \nat \) y una matriz \( W^o \in \real{p_0 \times n_h p_v} \) definimos la atención multicabezal como la función:
+     Sean \( (\head_{i})_{i = 1}^{n_h} \) cabezales de atención con parámetros \( \theta_{i} = \Set{ W^q_{i}, W^k_{i}, W^v_{i} } \). Dado \( p_o \in \nat \) y una matriz \( W^o \in \real{p_0 \times n_h p_v} \) definimos la atención multicabezal como la función:
      \[
-        \multihead \left(q, k, v; \mathfrak{W}, \alpha \right) = W^o \begin{pmatrix} \head_{1}(q, k, v; \theta_{1}, \alpha) \\ \vdots \\ \head_{n_h}(q, k, v; \theta_{n_h}, \alpha) \end{pmatrix}
+        \multihead \left(q, \mathcal{D}; \mathfrak{W}, \alpha \right) = W^o \begin{pmatrix} \head_{1}(q, \mathcal{D}; \theta_{1}, \alpha) \\ \vdots \\ \head_{n_h}(q, \mathcal{D}; \theta_{n_h}, \alpha) \end{pmatrix}
      \]
-     con \( \mathfrak{W} = \Set{ (W^q_{i})_{i = 1}^{n_h}, (W^k_{i})_{i = 1}^{n_h}, (W^v_{i})_{i = 1}^{n_h}, W^o} \).
+     con \( \mathfrak{W} = \bigcup_i \theta_i \cup \Set{W^o} \).\footnote{En la línea de la \eqref{eq:dot_product}, resulta práctico introducir la notación \( \multihead(Q, K, V) \), definida como la matriz que tiene por columna i-ésima \( \multihead(q_i, \Set{(k_n, v_n)}) \), siendo \( Q = [q_1, …, q_{n_q}], K = [k_1, …, k_n], V = [v_1, …, v_n] \). Utilizaremos esta notación al estudiar cómo implementar la arquitectura \textit{transformer}.}
 \end{definition}
 
 La definición anterior proporciona una forma directa de definir la capa de atención, como la capa que computa la función \( \multihead \) para una elección concreta de \( \alpha \), de forma que todas las matrices \( W \) son proyecciones aprendidas por la red. 
@@ -105,7 +157,7 @@ Una de las grandes ventajas del mecanismo de atención es que el cálculo de la 
 \section{Atención de Bahdanau y autoatención}
 Ya hemos comentado que la estrategia usada comunmente por las redes recurrentes de mantener un estado de longitud fija que comprima la entrada es inviable para secuencia de entrada complejas.
 
-El \textit{transformer} usa una estrategia distinta: en cada instante de tiempo \( t \), se mantiene una variable de \textit{contexto} \( z_t \) que se actualiza como una función del estado generado por el codificador a partir del texto original codificado en forma de claves y valores \( (h_{t}^k, h_{t}^v) \) y del texto ya generado por el decodificador \( s_{t-1} \). Si el texto tiene longitud \( T \) entonces la variable de contexto en el instante \( t_0 \) viene dada por:
+El \textit{transformer} usa una estrategia distinta: en cada instante de tiempo \( t \), se mantiene una variable de \textit{contexto} \( z_t \) que se actualiza como una función del estado generado por el codificador a partir del texto original representado en forma de claves y valores \( (h_{t}^k, h_{t}^v) \) y del texto ya generado por el decodificador \( s_{t-1} \). Si el texto tiene longitud \( T \) entonces la variable de contexto en el instante \( t_0 \) viene dada por:
 \[
     z_{t_0} = \sum^{T}_{t = 1} \alpha(s_{t_0 - 1}, h_{t}^k) h_{t}^v
 \]

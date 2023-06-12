@@ -2,7 +2,7 @@
 Tenemos la práctica totalidad de elementos necesarios para la presentación de los \textit{transformers}. En este capítulo discutimos cómo procesar la secuencia de entrada a fin de transformarla en una representación numérica, que pueda ser consumida por el modelo y presentamos la arquitectura \textit{transformer}, formalizando su funcionamiento en pseudocódigo.
 
 \section{Tokenización}
-El proceso de transformación de la secuencia de entrada (formada por símbolos) a vectores se denomina \textit{tokenización}. La tokenización comienza con la creación de un alfabeto \( \mathbb{V} \) (que en este contexto es conveniente identificar con \( \Set{ 1, 2, …, N_V } \)) de forma que cada elemento de la secuencia de entrada pueda ser representado como una sucesión de elementos de \( \mathbb{V} \), que reciben el nombre de \textit{tokens}.
+El proceso de transformación de la secuencia de entrada a vectores se denomina \textit{tokenización}. La tokenización comienza con la creación de un alfabeto \( \mathbb{V} \) (que en este contexto es conveniente identificar con \( \Set{ 1, 2, …, N_V } \)) de forma que cada elemento de la secuencia de entrada pueda ser representado como una sucesión de elementos de \( \mathbb{V} \), que reciben el nombre de \textit{símbolos}.
 
 \subsection{Creación del alfabeto}
 En el caso de que la secuencia de entrada represente un lenguaje natural existen dos opciones evidentes para definir el alfabeto: como el conjunto de letras (\textit{tokenización a nivel de carácter}) o como el conjunto de palabras presentes (\textit{tokenización a nivel de palabra}).
@@ -13,70 +13,69 @@ La tokenización a nivel de palabra presenta el problema inverso: el alfabeto es
 
 Existe una solución intermedia, llamada \textit{tokenización basada en sub-palabras}, en la que el alfabeto incluye las palabras frecuentes y también partículas comunes (por ejemplo, "in-", "-mente", "-ado"), de forma que las palabras complejas se representen mediante varios tokens. Esto permite reducir el alfabeto, sin aumentar demasiado el número de tokens necesarios para representar un texto.
 
-La tokenización por sub-palabra debe ser ajustada a cada lengua, lo que complica la tarea de generar modelos que reciban textos en varios idiomas, y su rendimiento depende de la estructura y la regularidad del lenguaje en sí. Una alternativa es utilizar la codificación a nivel de bit por pares de byte (\textit{byte-level byte-pair encoding}). En esta codificación, formalizada en el \cref{algo:byteencoding}, se divide la secuencia inicial en \textit{bytes} y se reemplazan los pares de bytes más comunes por nuevos símbolos, llamados \textit{reglas de sustitución}, que también se añaden al alfabeto, hasta que se alcanza el tamaño de alfabeto deseado.
+La tokenización por sub-palabra debe ser ajustada a cada lengua, lo que complica la tarea de generar modelos que reciban textos en varios idiomas, y su rendimiento depende de la estructura y la regularidad del lenguaje en sí. Una alternativa es utilizar la tokenización a nivel de bit por pares de byte (\textit{byte-level byte-pair encoding}). En este método, formalizada en el \cref{algo:byteencoding}, se divide la secuencia inicial en \textit{bytes} y se reemplazan los pares de bytes más comunes por nuevos símbolos, llamados \textit{reglas de sustitución}, que también se añaden al alfabeto, hasta que se alcanza el tamaño de alfabeto deseado.
 
-El \textit{tokenizador} se entrena sobre una muestra representativa del lenguaje, a fin de hallar las reglas de sustitución óptimas. En la práctica, esta codificación termina actuando como una codificación basada en sub-palabras, de forma que las partículas muy comunes son codificadas mediante un único \textit{byte}, mientras que las palabras poco comunes requieren múltiples \textit{bytes}. A diferencia de la codificación por subpalabras, no es necesario definir reglas para la partición de palabras y el tamaño del alfabeto puede mantenerse adecuadamente controlado.
+El \textit{tokenizador} se entrena sobre una muestra representativa del lenguaje, a fin de hallar las reglas de sustitución óptimas. En la práctica, esta tokenización termina actuando como una tokenización basada en sub-palabras, de forma que las partículas muy comunes son codificadas mediante un único \textit{byte}, mientras que las palabras poco comunes requieren múltiples \textit{bytes}. A diferencia de la tokenización por subpalabras, no es necesario definir reglas para la partición de palabras y el tamaño del alfabeto puede mantenerse adecuadamente controlado.
 
-Con independencia de como se construya el alfabeto, el proceso de generación del token utiliza una proyección aprendida:
+Con independencia de como se construya el alfabeto, se utiliza una proyección aprendida para generar una representación numérica a partir de los símbolos de la entrada:
 
 \begin{definition}[\textit{Tokenización}]
-    Sea un alfabeto \( \mathbb{V} \) y \( v \in \mathbb{V} \), el índice de un \textit{token} y \( W^e \in \real{N_v × d_e }\). Llamamos tokenización (o codificación) a la función:
+    Sea un alfabeto \( \mathbb{V} \) y \( W^e \in \real{|\mathbb{V}| × d_e }\). Dado un símbolo \( x \in \mathbb{V} \), llamamos tokenización a la función:
     \[
-        \psi(\cdot; W^e) = W^e e_{v}
+        \psi(x; W^e) = W^e e_{\ind(x)}
     \]
+    donde \( \ind(x) \) representa el índice del símbolo \( x \) en el alfabeto. 
 \end{definition}
 
 \begin{algorithm}[tb]
     \SetAlgoLined
-    \KwData{$(x^{(i)})_{i = 1}^n$, la secuencia de entrada, siendo cada \( x^{(i)} \) un \textit{byte}}
-    \mydata{$N$, el tamaño máximo del alfabeto}
+    \KwData{$\Set{x_n}_{n = 1}^N$, la secuencia de entrada, siendo cada \( x_n \) un \textit{byte}}
+    \mydata{$N_V$, el tamaño máximo del alfabeto}
     
     $\mathbb{V} \gets \Set{w \mid w \in (x^{(i)})}$\; 
     \While{$|\mathbb{V}| < N$}{
-        Calcular la frecuencia de cada par $x^{(i)}, x^{(i+1)}$ con $i = 1, …, n-1$\;
-        Elegir el par $x^{(k)}, x^{(k+1)}$ más frecuente y sustituir cada aparición de este par en $(x^{(i)})$ por un símbolo \( \alpha \notin \mathbb{V} \)\;
+        Calcular la frecuencia de cada par $x_n, x_{n+1}$ con $n = 1, …, N-1$\;
+        Elegir el par $x_n, x_{n+1}$ más frecuente y sustituir cada aparición de este par en $\Set{x_n}$ por un símbolo \( \alpha \notin \mathbb{V} \)\;
         \( \mathbb{V} \gets \mathbb{V} \cup \Set{ \alpha } \)\;
     }
-    \caption{Codificación a nivel de \textit{byte} por pares de \textit{bytes}}
+    \caption{Tokenización a nivel de \textit{byte} por pares de \textit{bytes}}
     \label{algo:byteencoding}
 \end{algorithm}
-
 
 \subsection{Codificación posicional}
 A diferencia de otras arquitecturas, como las redes recurrentes, los \textit{transformer} procesan todos los símbolos de entrada de forma paralela. Eso significa que no disponen de información sobre la posición relativa de los distintos símbolos de la entrada. 
 
-En los casos en que esta información sea necesaria, la solución es incluirla como parte del \textit{token}, utilizando una \textit{codificación posicional}. Existen varios tipos de codificación posicional, pero la más común actualmente es la codificación posicional aprendida: 
+En los casos en que esta información sea necesaria, la solución es incluirla como parte de la entrada a la red, utilizando una \textit{codificación posicional}. Existen varios tipos de codificación posicional, pero la más común actualmente es la codificación posicional aprendida: 
 \begin{definition}[Codificación posicional aprendida]
-    Sea \( l \in \Set{1, …, l_\text{max} } \) la posición de un token en la secuencia de entrada tokenizada y sea \( W^p \in \real{d_e × l_\text{max}} \) Llamamos codificación posicional aprendida a la función:
+    Sean \( \Set{x_l}_{l = 1}^{l_\text{max}} \) los símbolos de la secuencia de entrada  y sea \( W^p \in \real{d_e × l_\text{max}} \). Llamamos codificación posicional aprendida a la función:
     \[
-        \phi(\cdot; W^p) = W^p e_l
+        \phi(l; W^p) = W^p e_l
     \]
 \end{definition}
 
-
-\subsection{Creación del \textit{token}}
-A partir de la secuencia de entrada \( \Set{ x_i } \), la entrada \( \Set{ \widetilde{e}_i } \) del \textit{transformer} se genera como sigue:
+\subsection{Creación de la entrada de la red}
+A partir de la secuencia de entrada \( \Set{ x_i } \), la entrada \( \Set{ \widetilde{x}_i } \) del \textit{transformer} se genera como sigue:
 \begin{enumerate}
-    \item Se convierte la secuencia de entrada a una secuencia de caracteres del alfabeto \( \Set{ v_i } \) con \( v_i \in \mathbb{V} \).
-    \item Se obtiene la tokenización \( \Set{ e_i } \), de estos caracteres, aplicando una codificación \( \psi(\cdot, W^e) \) a cada elemento de \( \Set{ v_i } \).
-    \item Finalmente, se calcula la tokenización \( \Set{ \widetilde{e}_i } \) con información posicional, combinando la tokenización y la codificación posicional: \( \widetilde{e}_i = e_i + \psi(i; W^p) \).
+    \item Se convierte la secuencia de entrada a una secuencia de símbolos \( \Set{ v_i } \) con \( v_i \in \mathbb{V} \).
+    \item Se aplica la tokenización \( \psi(\smallbullet, W^e) \) sobre cada símbolo, obteniendo una secuencia \( \Set{ w_i } \) de vectores.
+    \item Finalmente, se computa la entrada al modelo \( \Set{ \widetilde{x}_i } \) combinando la tokenización anterior con la codificación posicional: \( \widetilde{x}_i = w_i + \psi(i; W^p) \).
 \end{enumerate}
 
 \section{La arquitectura \textit{transformer}}
 \begin{figure}[tb]
     \centering
     \includesvg[scale=0.75]{figures/chapter5/transformer.svg}
-    \caption{Diagrama del diseño del \textit{transformer}. La anotación \( × n \) representa que existen \( n \) copias del componente, conectadas secuencialmente. \cite{zhang2021dive}}
+    \caption{Diagrama del diseño del \textit{transformer}. La anotación \( × n \) representa que existen \( n \) copias del componente, conectadas secuencialmente.}
     \label{fig:transformer}
 \end{figure}
 
-Tenemos ya todos los elementos necesarios para presentar los \textit{transformer}. Como ya hemos dicho, la innovación de los \textit{transformer} proviene de integrar el mecanismo de atención en una red retro-alimentada de tipo codificador-decodificador, prescindiendo de dos mecanismos que se consideraban imprescindibles: las convoluciones y la recurrencia. En su lugar se utilizan capas de atención que usan como función de similitud el producto escalar normalizado, computado como en la \cref{eq:dot_product}.
+Tenemos ya todos los elementos necesarios para presentar los \textit{transformer}. Como ya hemos dicho, la innovación de los \textit{transformer} proviene de integrar el mecanismo de atención en una red retro-alimentada de tipo codificador-decodificador para crear modelos de lenguaje, prescindiendo de dos mecanismos que se consideraban imprescindibles: las convoluciones y la recurrencia. En su lugar se utilizan capas de atención que usan como función de similitud el producto escalar normalizado, computado como en la \cref{eq:dot_product}.
 
 El transformer recibe dos secuencias de símbolos: la secuencia de entrada, consumida por el bloque decodificador, y la secuencia de \textit{contexto}, consumida por el bloque codificador. El codificador utiliza atención bidireccional para crear una representación de la secuencia de contexto, que será consumida por el codificador junto a la secuencia de entrada para generar la salida del modelo.
 
-La \cref{fig:transformer} muestra el diseño  de un \textit{transformer}. El codificador está compuesto por una pila de bloques idénticos, cada uno de los cuales está compuesta por dos capas: una capa de \textit{atención multicabezal} y una red neuronal retro-alimentada posicional (\textit{position-wise feed-forward layer}), esto es, una red neuronal que se aplica elemento a elemento. Existe una conexión residual entre ambas capas que es inmediatamente seguida por una normalización de capa (\textit{layer normalization}).
+La \cref{fig:transformer} muestra el diseño  de un \textit{transformer}. El codificador está compuesto por una pila de bloques idénticos, cada uno compuesto por dos capas: una capa de \textit{atención multicabezal} y una red neuronal retro-alimentada. Existe una conexión residual entre ambas capas que es inmediatamente seguida por una normalización de capa.
 
-Los bloques están organizados secuencialmente, de forma que la salida de cada bloque del codificador está conectada a la entrada del bloque siguiente. La entrada del primer bloque es la secuencia de entrada tokenizada presentada en la sección anterior: esta representación será proyectada en cada cabezal \( h \) utilizando las matrices de proyección \( W^h_q, W^h_k, W^h_v \) para crear las consultas y la base de datos. 
+Los bloques están organizados secuencialmente, de forma que la salida de cada bloque del codificador está conectada a la entrada del bloque siguiente. La entrada del primer bloque es la secuencia de entrada tokenizada presentada en la sección anterior: esta representación será proyectada en cada cabezal \( h \) utilizando proyecciones aprendidas para crear las consultas y la base de datos. 
 
 El decodificador tiene un diseño similar: se trata de una serie de bloques conectados entre sí, cada uno formado por tres capas. La primera capa es una atención multicabezal con máscara, que recibe la salida ya generada. Cuando se entrena utilizando \textit{teacher forcing}, el decodificador recibe la salida objetivo, aunque solo atiende a las posiciones que el decodificador ya ha generado, a fin de que se comporte como un modelo auto-regresivo.
 
@@ -86,7 +85,7 @@ La salida del último bloque decodificador es enviada a una red neuronal, que ge
 
 \begin{algorithm}[tbph]
     \SetAlgoLined
-    \KwData{$z, x \in \mathbb{V}^*$, secuencias de caracteres con longitud \( l_z, l_x\)}
+    \KwData{$z, x \in \mathbb{V}^*$, secuencias de símbolos con longitud \( l_z, l_x\)}
     \KwResult{$P \in (0, 1)^{|\mathbb{V}| × |x|}$ donde $P_{i, j} = \widehat{P}\left( x[j + 1] = i \mid x[1:j], z; \theta \right) $}
     \KwHyper{$l_\text{max}$: longitud máxima de secuencia}
     \mydata{$L_\text{enc}, L_\text{dec}$, número de bloques codificador y decodificador}
@@ -105,7 +104,7 @@ La salida del último bloque decodificador es enviada a una red neuronal, que ge
     \mydatal{$W_l^3 \in \real{d_\text{mlp} × d_e}, b_l^3 \in \real{d_\text{mlp}}, W_l^4 \in \real{d_e × d_\text{mlp}}, b_l^4 \in \real{d_e}$, parámetros  neuronales}
 
     \tcc{Se tokeniza el contexto}
-    $Z \gets [e_1, …, e_t]$ con $e_t \gets W^e[:, z[t]] + W^p[:, t]$\;
+    $Z \gets [e_1, …, e_{l_z}]$ con $e_t \gets W^e[:, z[t]] + W^p[:, t]$\;
     \For{$l = 1, …, L_\text{enc}$}{
         $Z \gets Z + \multihead(Z, Z, Z; \mathfrak{W}_l^\text{enc})$\;
         para $t = 1, …, l_z$: $Z[:, t] \gets \LN(Z[:, t]; \gamma^1_l, \beta^1_l)$\;
@@ -125,6 +124,6 @@ La salida del último bloque decodificador es enviada a una red neuronal, que ge
         para $t = 1, …, l_x$: $X[:, t] \gets \LN(X[:, t]; \gamma^5_l, \beta^5_l)$\;
     }
     \Return{$P = \softmax(W_u X)$}
-    \caption{Pseudocódigo describiendo el \textit{transformer}\cite{phuong2022formal}}
+    \caption{\textit{Transformer}\cite{phuong2022formal}}
     \label{algo:transformer}
 \end{algorithm}

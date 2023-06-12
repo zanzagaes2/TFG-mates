@@ -8,42 +8,51 @@ También se presentan algunos trabajos novedosos que delinean el potencial de lo
 \section{Procesamiento de lenguaje natural}
 El procesamiento de lenguaje natural se ocupa del uso de los lenguajes naturales por sistemas informáticos. Los lenguajes naturales presentan retos únicos. No solo son inherentemente ambiguos y se resisten a ser descritos formalmente sino que la mayoría de problemas de lenguaje natural no están bien definidos y admiten múltiples soluciones. 
 
-La forma más habitual de abordar estos problemas desde el aprendizaje automático es diseñando \textit{modelos de lenguaje}, esto es, redes neuronales que aproximan una distribución de probabilidad sobre sucesiones de \textit{símbolos} (por ejemplo, letras o palabras) de un \textit{vocabulario}. Para ello, la red recibe una codificación de cada símbolo y la red computa una representación numérica multi-dimensional de cada símbolo (un \textit{embedding}) en un espacio mucho más pequeño (el espacio latente). Esta representación codifica espacialmente información semántica, de forma que las palabras que aparecen frecuentemente próximas están representadas por puntos cercanos y puede utilizarse para resolver el problema concreto de la red.
+La forma más habitual de abordar estos problemas desde el aprendizaje automático es diseñando \textit{modelos de lenguaje}, esto es, redes neuronales que aproximan una distribución de probabilidad sobre sucesiones de \textit{símbolos} (por ejemplo, letras o palabras) de un \textit{vocabulario}.
 
 \section{Modelos de lenguaje y generación de texto}
-Comencemos formalizando la noción de modelo de lenguaje, lo que requiere introducir algo de notación. Dado un alfabeto \( \mathbb{V} \), un conjunto finito indexado de símbolos, llamamos secuencias a las sucesiones finitas de símbolos del alfabeto. Denotamos al conjunto de todas las secuencias como \( \mathbb{V}^* \).
+Comencemos formalizando la noción de modelo de lenguaje. Dado un alfabeto \( \mathbb{V} \), un conjunto finito indexado de símbolos, llamamos secuencias a las sucesiones finitas de símbolos del alfabeto. Denotamos como \( \mathbb{V}^k \) al conjunto de todas las secuencias de longitud \( k \) y \( \mathbb{V}^* = \bigcup_{k \in \mathbb{N}} \mathbb{V}^k \) (la clausura de Kleene)
 
-Es conveniente tratar \( \mathbb{V} \) como un espacio de probabilidad, equipado con una función de probabilidad \( \mathbb{P} \). Dada una secuencia \( x \in \mathbb{V}^* \) un modelo de lenguaje aproxima 
-\[
-    \mathbb{P}(x_i \mid x_{i-1}, …, x_1)
-\]  
-mediante una función de probabilidad 
-\[ \widehat{\mathbb{P}} \left( x_{i} \mid x_{i-1}, …, x_{i - l_\text{máx}}; \theta \right) 
-\] 
-modelada mediante una red neuronal. \( l_\text{máx} \) recibe el nombre de \textit{longitud de contexto}.
+Es conveniente tratar \( \mathbb{V} \) como un espacio de probabilidad, equipado con una función de probabilidad \( \mathbb{P} \). Un modelo de lenguaje aproxima \( \mathbb{P} \) mediante una función de probabilidad \( \widehat{\mathbb{P}} \) modelada mediante una red neuronal con la propiedad:
+\begin{equation}\label{eq:prob}
+    \widehat{\mathbb{P}} \left( x_{k+1} \mid  x_1, …, x_k; \theta \right) = \widehat{\mathbb{P}} \left( x_{k+1} \mid x_{k - l_\text{máx}}, …, x_k; \theta \right) 
+\end{equation}
+para cada \( x \in \mathbb{V}^* \). La constante \( l_\text{máx} \) recibe el nombre de \textit{longitud de contexto}.
 
-Los modelos de lenguaje pueden reutilizarse para tareas muy diversas, por ejemplo, la generación de texto. El proceso de generación de un nuevo símbolo se define como la función estocástica:
+\subsubsection{Generación de texto} \label{sec:gen}
+Los modelos de lenguaje pueden reutilizarse para tareas muy diversas, por ejemplo, la generación de texto. El proceso de generación de texto se define como el muestreo de la sucesión de variables aleatorias \( \Set{X_k}_{k = 0}^\infty \) que toman valores en \( \mathbb{V} \) de forma que:
 \[
-    \myfunc{\mu}{\mathbb{V}^*}{\mathbb{V}}{(x_1, …, x_n)}{x_{n+1}}
+    \mathbb{P}(X_{k + 1} = \alpha \mid X_{0}, …, X_{k}) = 
+    \widehat{\mathbb{P}} \left( \alpha \mid  X_0, …, X_k; \theta \right)\footnote{A fin de tener mayor control sobre el proceso de generación de texto es frecuente sustituir en el proceso anterior \( \widehat{\mathbb{P}} \) por otra función de probabilidad \( \widehat{\mathbb{P}}^\tau \propto \widetilde{\mathbb{P}}^{1/\tau} \), determinada por el parámetro de temperatura \( \tau \in \real{\ge 0} \). Valores más bajos de este parámetro harán que se genere texto con más probabilidades de ser correcto, mientras que valores más altos generarán textos más diversos.}
 \]
-de forma que 
-\(
-    \mathbb{P}(\mu(x_1, …, x_n) = \alpha) = \widehat{\mathbb{P}} \left( x_{n+1} = \alpha \mid x_n … x_{n-l_\text{máx}} \right)
-\)
 
-Concatenando la secuencia inicial y el nuevo símbolo, se puede definir una función \( \overline{\mu} \) tal que \( \overline{\mu}(x) = (x, \mu(x)) \), con lo que el proceso de generación de texto puede entenderse como un proceso estocástico formado por una sucesión de variables \( \Set{ X^{(i)} }_{0 = 1}^N \) tales que:
+Es habitual fijar un valor \( \gamma \), de forma que \( \mathbb{P}(X_0 = \gamma) = 1 \), que se conoce como el texto de estímulo (o \textit{prompt}).
+
+Nótese que debido a la propiedad \eqref{eq:prob}, la sucesión \( \Set{X_k} \) se comporta como una cadena de Markov de orden \( l_\text{máx} \). En particular, la sucesión de variables aleatorias \( \Set{Y_k}_{k = 0}^{\infty} \) con valores en \( \mathbb{V}^{l_\text{máx}} \) definidas como:
+\[
+    Y_k = X_k, …, X_{k + {l_\text{máx}}}
+\]
+es una cadena de Markov de primer orden con matriz de transición \( M \) de dimensiones \( |\mathbb{V}|^{l_\text{máx}} \times |\mathbb{V}|^{l_\text{máx}} \). Aunque esta matriz es intratable (por ejemplo, con los parámetros de GPT-3 la matriz \( M \) tendría \( 10^{19256} \) entradas) es extremadamente dispersa. En particular, dados dos estados \( Y^{(1)}, Y^{(2)} \) de la forma:
 \begin{align*}
-X^{(0)} \in \mathbb{V}^* && X^{(i+1)} = \overline{\mu} (X^{(i)}) \quad \text{ para $i = 1, …, N$}
+    Y^{(1)} = X_1^{(1)}, …, X_{l_\text{máx}}^{(1)} &&
+    Y^{(2)} = X_1^{(2)}, …, X_{l_\text{máx}}^{(2)}
 \end{align*}
-La variable \( X^{(0)} \) recibe el nombre de texto de estímulo (\textit{prompt})
+una condición necesaria para que la entrada de \( M \) asociada a \( (Y^{(1)},  Y^{(2)}) \) sea distinta de \( 0 \) es que:
+\begin{align*}
+    X_1^{(1)}, …, X_{l_\text{máx} - 1}^{(1)} = X_2^{(2)}, …, X_{l_\text{máx}}^{(2)} && \left(\text{ o bien } X_1^{(2)}, …, X_{l_\text{máx}}^{(1)} = X_1^{(2)}, …, X_{l_\text{máx} - 1}^{(2)} \right)
+\end{align*}
+lo que (asumiendo equidistribución de los elementos de \( \mathbb{V} \) solo sucede con probabilidad \( \left( \frac{2}{|\mathbb{V}|} \right)^{l_\text{máx} - 1} \).
 
-\section{Diseño de redes para el procesamiento de lenguaje natural}
-La forma más directa (y, durante mucho tiempo la dominante) de abordar los problemas de \textit{secuencia a secuencia} es utilizando redes con conexiones cíclicas (o \textit{recurrentes}). Una red recurrente computa sobre la entrada \( \Set{ x_{1}, …, x_T } \in \mathbb{V}^* \) una función definida implícitamente mediante una ecuación de la forma:
+
+El poder expresivo de los \textit{transformer} proviene de la capacidad para almacenar de forma extremadamente eficiente esta matriz, explotando el alto grado de dispersión. 
+
+\section{Diseño de redes para procesar lenguaje natural}
+La forma más directa (y, antes de la aparición de los \textit{transformer}, la dominante) de abordar los problemas de \textit{secuencia a secuencia} es utilizando redes con conexiones cíclicas (o \textit{recurrentes}). Una red recurrente computa sobre la entrada \( \Set{ x_{1}, …, x_T } \in \mathbb{V}^* \) una función definida implícitamente mediante una ecuación de la forma:
 \begin{equation} \label{eq:rnn}
-    z_{t} = f(z_{t-1}, x_{t}, o_{t}; \theta)
+    z_{t} = f(z_{t-1}, x_{t}; \theta)
 \end{equation}
 
-\( z_{t-1} \) ``comprime'' las entradas anteriormente procesadas por la red, de forma que ésta pueda utilizar el contexto provisto por los símbolos anteriores para interpretar el nuevo símbolo \( x_{t} \), mientras que \( o_{t - 1} \) recoge la salida generada por la red (por ejemplo, la probabilidad estimada de cada símbolo en el momento \( t - 1 \)).
+\( z_{t-1} \) ``comprime'' las entradas anteriormente procesadas por la red, de forma que ésta pueda utilizar el contexto provisto por los símbolos anteriores para interpretar el nuevo símbolo \( x_{t} \). La salida de la red es una secuencia \( \Set{o_{t}} \), construida a partir de la secuencia \( \Set{z_t} \) como \( o_{t} = g(z_t) \).
 
 La interpretación de la salida de la red depende del problema concreto. Por ejemplo, en los problemas en los que la entrada es una secuencia y la salida un vector de longitud fija lo habitual es que la salida venga dada por \( o_{T} \) mientras que en el caso de que la entrada sea una entrada de longitud fija \( x \) y la salida sea una secuencia, esta puede construirse a partir de \( \Set{ o_{1}, …, o_{T} } \).
 
@@ -96,8 +105,6 @@ Lo que resulta aún más sorprendente es que, una vez alcanzan una escala sufici
 Las redes neuronales con estas propiedades se engloban bajo la difusa etiqueta de \textit\textit{grandes modelos del lenguaje} (\textit{large language models}) y estas capacidades se denominan \textit{habilidades emergentes}, dado que el rendimiento en estas tareas no puede predecirse a partir del de modelos más pequeños.
 
 Uno de los trabajos más interesantes al respecto, demostró que los grandes modelos de lenguaje eran capaces de aprender a utilizar herramientas en la forma de APIs (interfaces de programación de aplicaciones), como motores de búsqueda, diccionarios o calculadoras \cite{schick2023toolformer}.
-
-Los investigadores introdujeron unos cientos de ejemplos de llamadas a estas herramientas en el conjunto de entrenamiento y permitieron que el modelo, una versión de GPT con 6.7 mil millones de parámetros, anotara el conjunto de entrenamiento con propuestas de llamadas a las distintas herramientas. A continuación, ejecutaron las llamadas, introdujeron el resultado en el lugar que ocupaba la llamada y filtraron aquellas llamadas que no mejoraban el rendimiento del modelo sobre ese ejemplo concreto. Esto permite crear un nuevo conjunto de datos etiquetado con llamadas a las APIs con una fracción del coste que tendría crearlo a mano, sobre el que se puede reentrenar el modelo.
 
 Resulta fascinante que los grandes modelos de lenguaje puede aprender a realizar una nueva tarea incluso cuando los parámetros se han congelado mediante el mero procesamiento de ejemplos resueltos. Esta técnica recibe el nombre de \textit{few-shot learning} y se ha demostrado capaz de lograr resultados superiores a los de modelos específicamente afinados en multitud de tareas, como la traducción o la respuesta a preguntas \cite{brown2020language}).
 

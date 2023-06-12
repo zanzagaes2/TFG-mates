@@ -6,7 +6,6 @@
 \usepackage{amsthm}
 \usepackage{amsxtra}
 \usepackage{stmaryrd}
-\usepackage{lmodern}
 \usepackage{indentfirst}
 \usepackage[
     backend=biber,
@@ -21,7 +20,7 @@
 \usepackage{svg}
 \usepackage{csquotes}
 \usepackage{mathtools}
-\usepackage[spanish, onelanguage, boxed]{algorithm2e}
+\usepackage[spanish, onelanguage, boxed, ruled]{algorithm2e}
 \usepackage{nomencl}
 \usepackage{yhmath}
 \usepackage{color}
@@ -35,13 +34,9 @@
 \usepackage{subcaption}
 \usepackage{xargs} 
 \usepackage{array,amsfonts}
-\usepackage[parfill]{parskip}
+\usepackage[parfill]{parskip}%
 \usepackage{fancyvrb}
 \DefineVerbatimEnvironment{Code}{BVerbatim}{fontsize=\small, baseline=t}
-
-\newlength{\alphabet}
-\settowidth{\alphabet}{\normalfont abcdefghijklmnopqrstuvwxyz}
-\usepackage[textwidth=2.5\alphabet]{geometry}
 
 \usepackage{fontspec}
 
@@ -62,7 +57,8 @@
 %% Use lining fonts
 \newcommand\lining{\addfontfeatures{Numbers={Monospaced, Lining}}}
 \AtBeginEnvironment{tabular}{\lining} % In tables
-\renewcommand{\theequation}{ {\lining\arabic{equation}}} % For equation numbers
+\renewcommand{\theequation}{{\lining\arabic{equation}}} % For equation numbers
+
 
 \renewcommand*{\citesetup}{
   \lining
@@ -77,16 +73,9 @@
 {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}   
 \titlespacing*{\chapter}{0pt}{-50pt}{40pt}
 \titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
-%% Upright (normal) numbers here
 \titleformat{\subsection}{\large}{\thesubsection}{.6em}{}
-%% Below, both heading should form sentences
-\titleformat{\subsubsection}{}{\thesubsubsection}{.6em}{}{\itshape}
+\titleformat{\subsubsection}{\scshape}{\thesubsubsection}{.6em}{}{}
 \titleformat{\paragraph}[runin]{}{\theparagraph}{0pt}{\itshape}
-
-% \titlespacing*{\section}{0pt}{1\baselineskip}{1\baselineskip}
-% \titlespacing*{\subsection}{0pt}{1\baselineskip}{1\baselineskip}
-% \titlespacing*{\subsubsection}{0pt}{8pt}{5pt}
-
 
 % Code environment
 \newenvironment{code}{\par\addvspace{1.5em plus1em minus1em} \captionsetup{type=listing}}{\par\addvspace{1em plus1em minus1em}}
@@ -117,7 +106,7 @@
   \begingroup
   \setlength\arraycolsep{0pt}
   #1\colon\begin{array}[t]{c >{{}}c<{{}} c}
-             #2 & \to & #3 \\ #4 & \mapsto & #5 
+             #2 & \longrightarrow & #3 \\ #4 & \xmapsto & #5 
           \end{array}%
   \endgroup}
 \DeclareMathOperator{\MLP}{MLP}
@@ -133,6 +122,12 @@
 \DeclareMathOperator{\BN}{BN}
 \DeclareMathOperator{\LN}{LN}
 \DeclareMathOperator{\relu}{ReLU}
+\DeclareMathOperator{\gelu}{GELU}
+\DeclareMathOperator{\dropout}{Abandono}
+\DeclareMathOperator{\ind}{índ}
+\DeclareMathOperator{\pos}{pos}
+
+
 \DeclareMathOperator{\addnorm}{Add \& Norm}
 \DeclareMathOperator{\multihead}{MultiAtenci\acute{o}n}
 \DeclareMathOperator{\mmultihead}{M\acute{a}scaraMultiAtenci\acute{o}n}
@@ -172,4 +167,4 @@
   \vcenter{\hbox{\scalebox{#2}{$\m@th#1\bullet$}}}%
 }
 
-  \newcommand{\Set}[1]{\{\,#1\,\}}
+\newcommand{\Set}[1]{\{\,#1\,\}}
