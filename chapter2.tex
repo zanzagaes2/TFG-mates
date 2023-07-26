@@ -1,23 +1,23 @@
 \chapter{Redes neuronales pre-alimentadas}
-Realizamos en este capítulo una breve introducción a las redes neuronales secuenciales, inspirada en algunos de los más influyentes manuales sobre el tema \cite{goodfellow2016deep, bishop2006pattern}. Nuestra presentación, distinta a la habitual, pretende integrar el hecho  de que las redes neuronales contemporáneas no están compuestas íntegramente por neuronas, sino que presentan componentes de naturaleza y propósito muy distinta, como la normalización y regularización. 
+Realizamos en este capítulo una breve introducción a las redes neuronales secuenciales, inspirada en algunos de los más influyentes manuales sobre el tema \cite{goodfellow2016deep,bishop2006pattern,zhang2021dive}. Esta presentación, distinta a la habitual, pretende integrar el hecho  de que las redes neuronales contemporáneas no están compuestas íntegramente por neuronas, sino que presentan componentes de naturaleza y propósito muy distinta, como la normalización y regularización. 
 
 También se estudian en este capítulo las propiedades teóricas de estas redes y se introducen los problemas de diseño y entrenamiento de las redes neuronales.
 
 \section{Conceptos básicos}
-Dado un espacio de entrada \( X \subset \real{n} \) y un espacio de salida \( \real{m} \), una red neuronal es un modelo matemático que computa una función \( f: X \to \real{m} \) definida de forma composicional mediante una sucesión de \textit{capas} \( \Set{l_{i}}_{i=1}^n \), cada una de las cuales calcula una función \( f_{i} \). Por lo general, \( f_{i} \) es una función parametrizada (es decir, \( f_{i} = f_{i}(\mathord{\smallbullet}; \theta_i) \)); siendo \( \theta = \Set{\theta_i \mid i = 0 … n} \) el conjunto de parámetros del modelo.
+Dado un espacio de entrada \( X \subset \real{N} \) y un espacio de salida \( \real{M} \), una red neuronal es un modelo matemático que computa una función \( f: X \to \real{M} \) definida de forma composicional mediante una sucesión de \textit{capas} \( \Set{l_{i}}_{i=1}^{n_L} \), cada una de las cuales calcula una función \( f_{i} \). Por lo general, \( f_{i} \) es una función parametrizada (es decir, \( f_{i} = f_{i}(\mathord{\smallbullet}; \theta_i) \)); siendo \( \theta = \Set{\theta_i \mid i = 0 … n_L} \) el conjunto de parámetros del modelo.
 
-Las capas están \textit{enlazadas} entre sí, de forma que la salida de una capa proporciona la entrada a otras capas. Podemos definir una red neuronal mediante la tupla \( (X, \real{m}, \Set{ l_i }, \Sigma) \), siendo \( \Sigma \) una especificación de las conexiones entre capas.
+Las capas están \textit{enlazadas} entre sí, de forma que la salida de una capa proporciona la entrada a otras capas. Podemos definir una red neuronal mediante la tupla \( (X, \real{M}, \Set{ l_i }, \Sigma) \), siendo \( \Sigma \) una especificación de las conexiones entre capas.
 
-Las conexiones entre capas pueden ser muy complejas y no es infrecuente que la entrada de una capa provenga de concatenar la salida de varias capas. Las redes neuronales más sencillas son las \textit{secuenciales}, aquellas en las que la salida de una capa es la entrada de la siguiente, de forma que \( f = f_{0} \cdot f_{1} \cdot … \cdot f_{n} \).
+Las conexiones entre capas pueden ser muy complejas y no es infrecuente que la entrada de una capa provenga de concatenar la salida de varias capas. Las redes neuronales más sencillas son las \textit{secuenciales}, aquellas en las que la salida de una capa es la entrada de la siguiente, de forma que \( f = f_{0} \cdot f_{1} \cdot … \cdot f_{n_L} \).
 
-Una forma más debil de la \textit{secuencialidad} es la \textit{retroalimentación}: una red es retroalimentada si no existen ciclos en los enlaces entre capas. En este caso, la capa \( l_0 \), que recibe los datos proporcionados a la red neuronal, se denomina la \textit{capa de entrada}, la capa \( l_{n} \) es la \textit{capa de salida} y el resto de capas se denominan \textit{capas ocultas}.
+Una forma más debil de \textit{secuencialidad} es la \textit{retroalimentación}: una red es retroalimentada si no existen ciclos en los enlaces entre capas. En este caso, la capa \( l_0 \), que recibe los datos proporcionados a la red neuronal, se denomina la \textit{capa de entrada}, la capa \( l_{n_L} \) es la \textit{capa de salida} y el resto de capas se denominan \textit{capas ocultas}.
 
 Este trabajo se centra en el estudio de las redes retroalimentadas, dado que las redes no retroalimentadas (\textit{recurrentes}) presentan sus problemas propios.
 
-Durante mucho tiempo, el concepto de red neurronal fue sinónimo de \textit{perceptrón multicapa}, una red secuencial en la que todas las capas son \textit{capas de neuronas}.
+Durante mucho tiempo, el concepto de red neuronal fue sinónimo de \textit{perceptrón multicapa} (\textit{Multi-Layer Perceptron, MLP}), una red secuencial en la que todas las capas son \textit{capas de neuronas}.
 
 \begin{definition}[Capa de neuronas]
-    Dada una matriz \( W \in \real{m \times n} \), un vector \( b \in \real{m} \) y una función \( \sigma: \realo \to \realo \) una capa de neuronas computa una función \( \MLP: \real{n} \to \real{m} \)
+    Dada una matriz \( W \in \real{m \times n} \), un vector \( b \in \real{m} \) y una función \( \sigma: \realo \to \realo \) una capa de neuronas computa \( \MLP(\smallbullet; W, b): \real{n} \to \real{m} \) definida como:
     \[
         \MLP(x; W, b) = \sigma(Wx + b)
     \]
@@ -31,16 +31,20 @@ Aunque ninguna arquitectura contemporánea relevante es un perceptrón multicapa
 
 \subsection{Redes neuronales como aproximadores universales}    
 El uso más común de las redes neuronales es a modo de estimador de una función desconocida a partir de una muestra, cuya naturaleza dependerá del contexto concreto. Los \textit{teoremas de aproximación universal} garantizan la posibilidad de expresar una amplia clase de funciones mediante perceptrones multicapa.
-\begin{theorem}[Teorema de aproximación universal \cite{pinkus_1999}]
-Sea \( K \) un subconjunto compacto \( \mathbb{R}^d \) y  \( \sigma: \realo \to \realo \) una función no polinómica.  Entonces \( \mathcal{N} \), el espacio de redes retroalimentadas con una sola capa oculta y función de activación \( \sigma \)  es denso en \( \mathcal{C} (K, \real{d}) \) con respecto a la topología de convergencia uniforme.
+\begin{theorem}[Teorema de aproximación universal \cite{cybenko1989approximation}]
+Sea  \( K \) un subconjunto compacto de \( \mathbb{R}^d \) y \( \sigma: \realo \to \realo \) una función continua que verifica:
+\begin{align*}
+    \lim_{t \to -\infty} \sigma(t) = 0 && \lim_{t \to \infty} \sigma(t) = 1 
+\end{align*}
+Entonces \( \mathcal{N} \), el espacio de redes retroalimentadas con una sola capa oculta y función de activación \( \sigma \)  es denso en \( \mathcal{C} (K, \real{d}) \) con respecto a la topología de convergencia uniforme.
 \end{theorem}
 
 Se puede obtener un resultado similar utilizando redes de anchura fija:
 \begin{theorem}[Teorema de aproximación universal \cite{gripenberg2003approximation}]
-Sea \( K \) un subconjunto compacto \( \mathbb{R}^d \) y  \( \sigma: \realo \to \realo \) una función no afín continuamente diferenciable y con derivada distinta de cero en al menos un punto. Sea \( \mathcal{N}^\sigma_{d, D, d + D + 2} \) el espacio de redes neuronales retroalimentadas con \( d \) neuronas de entrada, \( D \) neuronas de salida y un número arbitrario de capas internas con \( d + D + 2\) neuronas y función de activación \( \sigma \). Entonces \( \mathcal{N} \) es denso en \( \mathcal{C} (K, \real{D}) \) con respecto a la topología de convergencia uniforme.
+Sea \( K \) un subconjunto compacto de \( \mathbb{R}^d \) y \( \sigma: \realo \to \realo \) una función no afín continuamente diferenciable y con derivada distinta de cero en al menos un punto. Sea \( \mathcal{N}^\sigma_{d, D, d + D + 2} \) el espacio de redes neuronales retroalimentadas con \( d \) neuronas de entrada, \( D \) neuronas de salida y un número arbitrario de capas internas con \( d + D + 2\) neuronas y función de activación \( \sigma \). Entonces \( \mathcal{N} \) es denso en \( \mathcal{C} (K, \real{D}) \) con respecto a la topología de convergencia uniforme.
 \end{theorem}
 
-Aunque promisorios, los teoremas de aproximación universal tienen escasa utilidad práctica. Su demostración, que no es constructiva, no proporciona indicación alguna sobre cómo definir una red capaz de expresar una función concreta ni sobre cómo encontrar los parámetros del modelo que la aproximen con el grado de precisión deseado. De ésto se ocupan, respectivamente, los problemas de \textit{diseño} y \textit{entrenamiento} de redes neuronales, campos de intensa investigación que abordamos ahora.
+Aunque promisorios, los teoremas de aproximación universal tienen escasa utilidad práctica. Su demostración, que no es constructiva, no proporciona indicación alguna sobre cómo definir una red capaz de expresar una función concreta ni sobre cómo encontrar los parámetros del modelo que la aproximen con el grado de precisión deseado. De esto se ocupan, respectivamente, los problemas de \textit{diseño} y \textit{entrenamiento} de redes neuronales, campos de intensa investigación que abordamos ahora.
 
 \section{Entrenamiento de redes neuronales}
 Por norma general, el objetivo de una red neuronal es aproximar una función \( f \colon X \to Y  \) mediante la minimización de una función de pérdida \( L \colon (X \to Y) \times (X \to Y) \to \realo \). Es decir, si \( \widehat{f}(\smallbullet; \theta) \colon X \to Y \) es la función computada por el modelo el problema a resolver es
@@ -51,30 +55,28 @@ Por norma general, el objetivo de una red neuronal es aproximar una función \( 
 En la práctica, la función \( f \) es desconocida\footnote{Existen casos, como la generación de lenguaje natural, en los que no es evidente que dicha función exista. Esos casos se pueden tratar de forma más general: buscamos una configuración \( \theta \) que resuelva el problema \( \max_\theta L(\widehat{f}(\smallbullet; \theta))\) donde \( L \) es una medida de rendimiento en la tarea.}, con lo que el problema se aproxima de forma indirecta. En el \textit{aprendizaje supervisado} se utiliza un conjunto de observaciones para las que conocemos el resultado esperado, lo que permite aproximar el problema de entrenamiento como un problema de optimización.
 
 \begin{definition}[Aprendizaje supervisado]
-    Sean \( \Set{x_{i}}_{i = 1}^n \) con \( x_{i} \in \real{n} \) una sucesión de \textit{puntos de entrenamiento} e \( \Set{ y_{i} }_{i = 1}^n \) con \( y_{i} \in \real{m} \) el \textit{resultado esperado} asociado a dichos puntos. Sea \( L: \real{n} \times \real{m} \to \realo^{\geq 0} \) una función de coste.
-    \
-    Consideremos una red neuronal con parámetros provenientes de un espacio \( \Theta \) y función asociada \( \widehat{f}(\smallbullet; \theta) \colon \real{n} \to \real{m} \). Definimos la función de error \( E \) como:
+    Sean \( \Set{x_{i}}_{i = 1}^n \) con \( x_{i} \in \real{N} \) una sucesión de \textit{puntos de entrenamiento} e \( \Set{ y_{i} }_{i = 1}^n \) con \( y_{i} \in \real{M} \) el \textit{resultado esperado} asociado a dichos puntos. Sea \( L: \real{M} \times \real{M} \to \realo^{\geq 0} \) una función de coste.
+    
+    Consideremos una red neuronal con parámetros provenientes de un espacio \( \Theta \) y función asociada \( \widehat{f}(\smallbullet; \theta) \colon \real{N} \to \real{M} \). Definimos la función de error \( E \) como:
     \[
         E(\theta) = \frac{1}{n} \sum_{i = 1}^n L\left( \widehat{f}(x_{i}; \theta), y_{i} \right)
     \]
     y el problema de aprendizaje supervisado como \( \min_{\theta \in \Theta} E(\theta) \)
 \end{definition}
 
-Por norma general, los modelos se entrenan una única vez y luego se utilizan para realizar \textit{inferencia}, es decir, procesar datos de entrada sin alterar los parámetros del modelo. 
-
 \subsection{Técnicas de gradiente}
-La forma más común de abordar el problema de entrenamiento es utilizando técnicas de gradiente. Puesto que \( \Theta \) es frecuentemente un abierto de \( \real{d} \) con lo que, eligiendo la función de pérdida y las funciones de capa de forma que \( E \) sea diferenciable, se obtiene que si \( \theta^* \) es un mínimo entonces:
+La forma más común de abordar el problema de aprendizaje es utilizando técnicas de gradiente. \( \Theta \) es frecuentemente un abierto de \( \real{k} \) para algún \( k \in \nat \) con lo que, eligiendo la función de pérdida y las funciones de capa de forma que la función de error sea diferenciable, se obtiene que si \( \theta^* \) es un mínimo entonces:
 \begin{equation} \label{eq:gradient}
-    \nabla E(\theta^*) = \frac{1}{n} \sum_{i = 1}^n \nabla_\theta L\left( \widehat{f}(x_{i}; \theta^*), y_{i} \right)
+    \nabla E(\theta^*) = \frac{1}{n} \sum_{i = 1}^n \nabla_\theta L\left( \widehat{f}(x_{i}; \theta^*), y_{i} \right) = 0
 \end{equation}
 
-Salvo en casos triviales es inviable encontrar una solución analítica a la ecuación \eqref{eq:gradient} pero es posible utilizar técnicas de aproximación como el descenso de gradiente (\cref{algo:descent}).
+Salvo en casos triviales es inviable encontrar una solución analítica a la ecuación \eqref{eq:gradient}, pero es posible usar técnicas de aproximación como el descenso de gradiente (\cref{algo:descent}), que exploten el hecho de que la dirección opuesta al gradiente es la dirección de máximo descenso.
 
 \begin{algorithm}
     \SetAlgoLined
     \KwData{$\epsilon > 0$, la \textit{tasa de aprendizaje}}
     \mydata{$\theta \in \Theta$, parámetros iniciales}
-    \mydata{$E \colon \Theta \to \realo$, la función a optimizar}
+    \mydata{$L \colon \Theta \to \realo$, la función a optimizar}
     \While{no se cumpla el criterio de parada}{
         Cálculo del gradiente: $g \gets -\nabla_\theta L(\theta)$\;
         Actualización de los parámetros: $\theta \gets \theta - \epsilon g$\;}
@@ -82,40 +84,40 @@ Salvo en casos triviales es inviable encontrar una solución analítica a la ecu
     \label{algo:descent}
 \end{algorithm}
 
-En general, el descenso de gradiente sólo garantiza la convergencia a un mínimo local bajo condiciones muy estrictas, como las condiciones de Wolfe \cite{nocedal2006}. Podemos estudiar el efecto esperado de la optimización de gradiente, aplicando esta técnica a una función \( f \in \mathcal{C^2}(\real{n}, \realo) \) aproximada en un punto \( x_{0} \) como:
+En general, el descenso de gradiente sólo garantiza la convergencia a un mínimo local bajo condiciones muy estrictas, como las condiciones de Wolfe \cite{nocedal2006}. Podemos estudiar el efecto esperado del descenso de gradiente, aplicando esta técnica a una función \( f \in \mathcal{C^2}(\real{n}, \realo) \) aproximada en un punto \( x_{0} \) como:
 \[
     f(x) \simeq f(x_{0}) + (x - x_{0})^T g + \frac{1}{2} (x - x_{0})^T H (x-x_{0})
 \]
 donde \( g \) y \( H \) son, respectivamente, el gradiente y  el Hessiano de \( f \) evaluados en \( x_{0} \). El valor de \( f \) en el punto \( x_{0} - \epsilon \nabla f(x_0) \) puede aproximarse como:
 \begin{equation}\label{eq:descent}
-    f \left( x_{0} - \epsilon \nabla f(x_{0}) \right) \simeq f(x_{0}) - \epsilon \| g \|_2^2 +  \frac{1}{2} \epsilon^2 g^T Hg
+    f \left( x_{0} - \epsilon \nabla f(x_{0}) \right) \simeq f(x_{0}) - \epsilon g^T g +  \frac{1}{2} \epsilon^2 g^T Hg
 \end{equation}
 
-Tenemos, por tanto, que si \( \frac{1}{2} \epsilon^2 g^T Hg > \epsilon \| g \|_2^2 \) el punto propuesto por el método de descenso de gradiente es peor que el original, situación que se da cuando \( f \) tiene una curvatura positiva considerable en la dirección de \( g \). 
+Luego si \( \frac{1}{2} \epsilon^2 g^T Hg > \epsilon g^T g \), entonces el punto propuesto por el método de descenso de gradiente es peor que el original, situación que se da cuando \( f \) tiene una curvatura positiva considerable en la dirección de \( g \). 
 
-Este no es el único problema del gradiente, que es también susceptible a quedar atrapado en puntos de silla. En principio, estos problemas desaparecerían si se utilizasen \textit{métodos de optimización de segundo orden}, como el método de Newton, pero las dimensiones presentes en los problemas de aprendizaje automático son tan altas que hacen el cálculo del Hessiano computacionalmente infactible.
+Este no es el único problema del gradiente, que es también susceptible de quedar atrapado en puntos de silla. En principio, estos problemas desaparecerían si se utilizasen \textit{métodos de optimización de segundo orden}, como el método de Newton, pero las dimensiones presentes en los problemas de aprendizaje automático son tan altas que hacen el cálculo del Hessiano computacionalmente inabordable.
 
-De hecho, lo habitual es prescindir del cálculo del gradiente sobre todos los elementos de la muestra y recurrir a calcularlo sobre \textit{minilotes} de la forma \( \Set{ x_{n_1}, …, x_{n_k} } \) elegidos aleatoriamente. Este método se denomina \textit{descenso de gradiente estocástico}, dado que el gradiente exacto se sustituye por el estimador insesgado: \[
+De hecho, lo habitual es prescindir del cálculo del gradiente sobre todos los elementos del conjunto de entrenamiento y recurrir a calcularlo sobre \textit{minilotes} de la forma \( \Set{ x_{n_1}, …, x_{n_k} } \) elegidos aleatoriamente. Este método se denomina \textit{descenso de gradiente estocástico}, dado que el gradiente exacto se sustituye por el estimador insesgado: \[
     \frac{1}{k} \sum_{i = 1}^k \nabla L\left( \widehat{f}(x_{n_i}; \theta), y_{n_i} \right) 
 \]
 Cuando el tamaño de cada minilote es suficientemente grande, este método reduce enormemente el coste computacional sin deteriorar la velocidad de convergencia.
 
 A pesar de que ofrece pocas garantías, el método de descenso de gradiente estocástico ofrece resultados excelentes en la práctica, donde no es demasiado relevante encontrar mínimos locales y el método suele ser capaz de escapar de los puntos de silla. 
 
-La principal dificultad consiste en elegir un valor adecuado para la tasa de aprendizaje: un valor demasiado alto provoca inestabilidad en el aprendizaje y puede amenazar la convergencia, un valor demasiado bajo puede provocar que la red quede atrapada en una meseta y alargar considerablemente el tiempo y los recursos necesarios para el entrenamiento. De hecho, como se deduce de la ecuación \eqref{eq:descent}, la función de coste suele ser mucho más sensible en unas direcciones del espacio de parámetros que en otras, con lo que cualquier tasa de aprendizaje constante puede resultar muy ineficiente. Los algoritmos de optimización con tasa de aprendizaje adaptativa facilitan el problema de determinar los hiperparámetros.
+La principal dificultad consiste en elegir un valor adecuado para la tasa de aprendizaje: un valor demasiado alto provoca inestabilidad en el aprendizaje y puede amenazar la convergencia, un valor demasiado bajo puede provocar que la red quede atrapada en una meseta y alargar considerablemente el tiempo y los recursos necesarios para el entrenamiento. De hecho, como se deduce de la ecuación \eqref{eq:descent}, la función de coste suele ser mucho más sensible en unas direcciones del espacio de parámetros que en otras, con lo que cualquier tasa de aprendizaje constante puede resultar muy ineficiente. Los algoritmos de optimización con tasa de aprendizaje adaptativa facilitan el problema de determinar los parámetros.
 
 \subsubsection{Algoritmos adaptativos: Adam}
-El algoritmo \textit{Adam} (\cref{algo:adam}) adapta la tasa de aprendizaje \( \epsilon \) a cada parámetro. Para ello se utiliza una variante del método de descenso de gradiente estocástico, en la que en lugar del gradiente se utiliza una media móvil con decaimiento exponencial de los gradientes de iteraciones anterior (el \textit{momento}). El uso del momento acelera la convergencia en contextos de alta curvatura y de varianza significativa en el gradiente estocástico \cite{polyak1964some}.
+El algoritmo \textit{Adam} (\cref{algo:adam}) adapta la tasa de aprendizaje a cada parámetro, utilizando una variante del método de descenso de gradiente estocástico en la que, en lugar del gradiente, se utiliza una media móvil con decaimiento exponencial de los gradientes de iteraciones anterior (el \textit{momento}). El uso del momento acelera la convergencia en contextos de alta curvatura y de varianza significativa en el gradiente estocástico \cite{polyak1964some}.
 
-A fin de aumentar la estabilidad del método, el momento se reescala usando la raíz cuadrada de una media móvil con decaimiento exponencial del cuadrado de las derivadas parciales. Esto provoca que parámetros con derivadas parciales mayores (correspondientes con direcciones del espacio de optimización con mayor pendiente) verán reducida su tasa de aprendizaje, mientras que parámetros con derivadas pequeñas tendrá una tasa de aprendizaje mayor. 
+A fin de aumentar la estabilidad del método, el momento se reescala usando la raíz cuadrada de una media móvil con decaimiento exponencial del cuadrado de las derivadas parciales. Esto provoca que parámetros con derivadas parciales con mayor norma (correspondientes con direcciones del espacio de optimización con mayor pendiente) verán reducida su tasa de aprendizaje, mientras que los parámetros con derivadas con menor norma tendrán una tasa de aprendizaje mayor. 
 
-Por su excelente rendimiento en todo tipo de problemas, \textit{Adam} (y su variante \textit{AdamW}, que incopora decaimiento de pesos) es el método de aprendizaje \textit{de facto} en el campo del procesamiento de lenguaje natural.
+Por su excelente rendimiento en todo tipo de problemas, \textit{Adam} es el método de aprendizaje \textit{de facto} en el campo del procesamiento de lenguaje natural.
 
 \begin{algorithm}[tb]
     \SetAlgoLined
     \KwData{$\theta$, parámetros iniciales}
     \mydata{$L(\theta)$, función objetivo}
-    \KwHyper{$\Alpha$, conjunto de hiperparámetros. Formado por:}
+    \KwHyper{$\Alpha$, conjunto de parámetros de entrenamiento. Formado por:}
     \mydatal{$\epsilon$, tasa de aprendizaje base}
     \mydatal{$\rho_1, \rho_2 \in [0, 1)$, tasa de decaimiento exponencial}
     \mydatal{$\delta > 0$, constante pequeña para aumentar la estabilidad numérica}
@@ -137,48 +139,50 @@ Por su excelente rendimiento en todo tipo de problemas, \textit{Adam} (y su vari
 \end{algorithm}
 
 \subsection{Cálculo del gradiente y propagación}
-El cálculo del gradiente se lleva a cabo aplicando la regla de la cadena de forma recursiva. Puesto que suele requerir resultados previamente computados por la red, las redes retroalimentadas realizan primero una \textit{propagación hacia delante} (\textit{forward propagation}), en la que se calculan y almacenan las activaciones de cada capa y se evalúa el error y luego una \textit{propagación hacia atrás} (\textit{backward propagation}), en la que se calcula el valor de los gradientes y se actualizan los parámetros. 
+El cálculo del gradiente se lleva a cabo aplicando la regla de la cadena de forma recursiva. Puesto que suele requerir resultados previamente computados por la red, durante el entrenamiento las redes retroalimentadas realizan primero una \textit{propagación hacia delante} (\textit{forward propagation}), en la que se calculan y almacenan las activaciones de cada capa y se evalúa el error y luego una \textit{propagación hacia atrás} (\textit{backward propagation}), en la que se calcula el valor de los gradientes y se actualizan los parámetros. 
 
-A la hora de implementar estos algoritmos lo habitual es construir un \textit{grafo computacional}: un grafo dirigido con un nodo por variable y operación, de forma que el nodo \( i \) está conectado a un nodo de operación \( j \) si \( i \) es un argumento de \( j \). 
+Por norma general, las redes neuronales se entrenan una única vez (en un proceso computacionalmente intensivo) hasta llegar a una configuración de parámetros satisfactoria. Una vez entrenadas, se utilizan para realizar \textit{inferencia}, procesando nuevos datos de entrada sin alterar los parámetros del modelo y sin necesidad de calcular los gradientes.
+
+A la hora de implementar las técnicas de gradiente, campo del que se ocupa la \textit{diferenciación automática}, lo habitual es construir un \textit{grafo computacional}: un grafo dirigido con un nodo por variable y operación, de forma que el nodo \( i \) está conectado a un nodo de operación \( j \) si \( i \) es un argumento de \( j \). 
 
 Cada nodo dispone de una operación que permite calcular el gradiente a partir del gradiente de los nodos entrantes: durante la propagación hacia atrás el grafo computacional se recorre en sentido inverso, almacenando los resultados en una tabla para evitar repetir cálculos.
 
 \subsection{Infraajuste y sobreajuste}
-En la inmensa mayoría de casos, la muestra utilizada para el entrenamiento no permite deducir de forma unívoca la función \( f \), por ejemplo, porque hay regiones significativas del espacio de entrada que no están representadas en la muestra o porque los valores esperados presentan una cierta desviación respecto del valor real (por ejemplo, por haber sido medidos empíricamente).
+En la práctica totalidad de los casos, los valores del conjunto de entrenamiento no determinan de forma unívoca la función que se quiere aproximar; por ejemplo, porque hay regiones significativas del espacio de entrada que no están representadas en la muestra o porque los valores esperados presentan una cierta desviación respecto del valor real (por ejemplo, por haber sido medidos empíricamente).
 
-En estas condiciones, ajustar los parámetros demasiado estrictamente a los datos de entrada puede introducir complejidad innecesaria en el modelo y deterior su capacidad para \textit{generalizar}, empeorando su rendimiento sobre conjuntos no observados de datos. Este fenómeno se conoce como \textit{sobreajuste}. Prevenir el sobreajuste es uno de los grandes problemas del aprendizaje automático y, por lo general, requiere la combinación de diversas estrategias.
+En estas condiciones, ajustar los parámetros demasiado estrictamente a los datos de entrada puede introducir una complejidad innecesaria en el modelo y deterior su capacidad para \textit{generalizar}, empeorando su rendimiento sobre conjuntos no observados de datos. Este fenómeno se conoce como \textit{sobreajuste}. Prevenir el sobreajuste es uno de los grandes problemas del aprendizaje automático y, por lo general, requiere la combinación de diversas estrategias.
 
 Una técnica universal consiste en dividir las observaciones en tres conjuntos: uno de \textit{entrenamiento}, otro de \textit{validación} y otro de \textit{prueba}. El primero se usa para entrenar la red, el segundo para supervisar el entrenamiento y comparar modelos y el último para evaluar el rendimiento del modelo.
 
-Además de la partición de la muestra, también es habitual añadir a la función de error un término regularizador, con lo que el problema de aprendizaje supervisado pasa a ser:
+Además de la partición de la muestra, también es habitual añadir a la función de error un término regularizador, con lo que el problema de aprendizaje supervisado se convierte en:
 \[
     \min_{\theta \in \Theta} E(\theta) + \lambda \Omega(\theta)
 \]
-siendo \( \lambda \geq 0 \) y \( \Omega \colon \Theta \to \mathbb{R}^{\geq 0} \)  una función de regularización (habitualmente \( \| \smallbullet \|_{1} \) o \( \| \smallbullet \|_{2} \)). La regularización penaliza configuraciones de parámetros con pesos muy elevados, comunes en situaciones de sobreaprendizaje y habitualmente mal condicionadas ante cambios en la entrada.
+siendo \( \lambda \geq 0 \) y \( \Omega \colon \Theta \to \mathbb{R}^{\geq 0} \)  una función de regularización (habitualmente \( \| \smallbullet \|_{1} \) o \( \| \smallbullet \|_{2} \)). La regularización penaliza configuraciones de parámetros con norma demasiado elevada, comunes en situaciones de sobreaprendizaje y habitualmente mal condicionadas ante cambios en la entrada.
 
-También el \textit{sobreentrenamiento} puede conducir al sobreajuste, con lo que el proceso de entrenamiento suele supervisarse para poder hacer los ajustes necesarios o detenerlo (\textit{early stopping}) 
+También el \textit{sobreentrenamiento} puede conducir al sobreajuste, con lo que el proceso de entrenamiento debe supervisarse para poder hacer los ajustes necesarios o detenerlo (\textit{early stopping}) 
 
 Además de estas técnicas de aplicación universal, prácticamente todas las arquitecturas contemporáneas contienen componentes específicos para evitar el sobreajuste, algunos de los cuales introduciremos más adelante.
 
 \section{Diseño de redes neuronales}
 El diseño de redes neuronales está condicionado por un resultado relevante, el \textit{no free lunch theorem}, que afirma que, como optimizadores de propósito general, todas las redes neuronales tienen un rendimiento esperado equivalente al minimizar una función de coste cualquiera.
-\begin{definition}[\textit{No free lunch theorem} \cite{wolpert1997freelunch}]
-    Sean \( \mathcal{X}, \mathcal{Y} \) espacios finitos y \( f \colon \mathcal{X} \to \mathcal{Y} \) una función de coste. Supongamos que \( a_1, a_2 \) son algoritmos de optimización, cada uno de los cuales puede evaluar el valor de \( f \) en un punto \( x \) únicamente a través de un oráculo \( \mathfrak{f} \). Sean \( \Set{ (x_{1}, y_{1}), …, (x_{m}, y_{m}) } \) con \( y_{i} = f(x_{i}) \) la secuencia ordenada de llamadas al oráculo. Se tiene entonces que:
+\begin{theorem}[\textit{No free lunch theorem} \cite{wolpert1997freelunch}]
+    Sean \( \mathcal{X}, \mathcal{Y} \subset \realo \) espacios finitos y \( f \colon \mathcal{X} \to \mathcal{Y} \) una función de coste. Supongamos que \( a_1, a_2 \) son algoritmos de optimización que evalúan \( f \) como parte de su ejecución. Supongamos que \( \Set{ (x_{1}, y_{1}), …, (x_{m}, y_{m}) } \) con \( y_{i} = f(x_{i}) \) es una secuencia ordenada de evaluaciones de \( f \). Se tiene entonces que:
     \[
         \sum_{f \in (\mathcal{X} \to \mathcal{Y})} \mathbb{P} \left( \Set{y_{1}, …, y_{m}} \mid f, m, a_1 \right) = \sum_{f \in (\mathcal{X} \to \mathcal{Y})} \mathbb{P} \left( \Set{y_{1}, …, y_{m}} \mid f, m, a_2 \right)
     \]
-\end{definition}
+\end{theorem}
 
 En consecuencia, el campo del diseño de redes neuronales debe renunciar al objetivo de crear redes neuronales de propósito excesivamente general y dedicarse a la identificación de principios de diseño y la definición de arquitecturas especializadas para abordar clases de problemas concretos. 
 
 \subsection{Redes profundas}
 A la luz del resultado anterior, puede resultar sorprendente que haya estrategias capaces de ofrecer resultados excelentes en problemas de muy distinta naturaleza, la principal de las cuales es el uso de redes neuronales profundas (con un gran número de capas ocultas).
 
-La experiencia ha demostrado que las redes profundas son capaces de aproximar una amplia variedad de funciones con mucho menos tiempo de entrenamiento que redes anchas poco profundas con un número equivalente de parámetros. La evidencia empírica ha sido también contrastada teóricamente para ciertas clases de funciones: por ejemplo, se ha demostrado que las redes neuronales profundas son capaces de aproximar la clase de funciones composicionales con un número exponencialmente menor de parámetros \cite{mhaskar2017and} que redes neuronales más anchas y menos profundas. 
+La experiencia ha demostrado que las redes profundas necesitan mucho menos tiempo de entrenamiento que redes anchas poco profundas (con un número equivalente de parámetros) para aproximar una amplia variedad de funciones. La evidencia empírica ha sido también contrastada teóricamente para ciertas clases de funciones: por ejemplo, se ha demostrado que las redes neuronales profundas son capaces de aproximar la clase de funciones composicionales con un número exponencialmente menor de parámetros \cite{mhaskar2017and} que redes neuronales más anchas y menos profundas. 
 
-Este descubrimiento dio un extraordinario ímpetu al campo del \textit{aprendizaje profundo}, que se ha demostrado capaz de superar ampliamente los resultados obtenidos por otras técnicas en una amplia variedad de ámbitos desde el procesamiento de lenguaje natural al reconocimiento de imágenes.
+El descubrimiento del potencial y versatilidad de las redes neuronales profundas dio un extraordinario ímpetu al campo del \textit{aprendizaje profundo}, que se ha demostrado capaz de superar ampliamente los resultados obtenidos por otras técnicas en una amplia variedad de ámbitos desde el procesamiento de lenguaje natural al reconocimiento de imágenes.
 
-La creación de redes cada vez más profundas presenta varios retos. Estas redes son más susceptibles a problemas de estabilidad numérica, como la \textit{explosión} o el \textit{desvanecimiento} de gradiente, que comentaremos más adelante. Además, la adición de nuevas capas aumenta la cantidad de tiempo y recursos computacionales necesarios para el entrenamiento efectivo de estas redes. 
+La creación de redes cada vez más profundas presenta varios retos. Estas redes son más propensas a problemas de estabilidad numérica, como la \textit{explosión} o el \textit{desvanecimiento} de gradiente, que ocurren cuando alguna de las derivadas parciales calculadas durante el entrenamiento tiene una magnitud tan grande o tan pequeña que no puede ser representada con la precisión numérica disponible. Además, la adición de nuevas capas aumenta la cantidad de tiempo y recursos computacionales necesarios para el entrenamiento efectivo de estas redes. 
 
 \subsection{Técnicas de propósito general}
 Existe una amplia variedad de técnicas que facilitan el entrenamiento de las redes profundas. Presentamos ahora algunas de ellas, que por su utilidad se han vuelto ubicuas en el diseño de redes neuronales.  
@@ -189,7 +193,7 @@ Normalizar los datos de entrada antes de introducirlos a la red se traduce en to
 No obstante, los datos suelen dejar de estar normalizados conforme son procesados por las capas de la red neuronal. Una solución habitual es renormalizar los datos en distintas etapas de la red, usando la media y la desviación estándar de cada minilote. Cuando las limitaciones computacionales obligan a trabajar con tamaños de minilote pequeños, se puede normalizar cada dimensión de los datos por separado. 
 
 \begin{definition}[Normalización de capa (\textit{Layer normalization})]
-    Dados \( x \in \real{n} \) y \( \gamma, \beta \in \real{n} \) definimos la normalización de capa como la función \( \LN: \real{n} \to \real{n} \):
+    Dados \( x, \gamma, \beta \in \real{n} \) definimos la normalización de capa como la función:
     \[
         \LN(x; \gamma, \beta) = \gamma \odot \frac{x - \widehat{\mu}}{\widehat{\sigma}} + \beta
     \]
@@ -197,12 +201,12 @@ No obstante, los datos suelen dejar de estar normalizados conforme son procesado
 \end{definition}
 
 \subsubsection{Conexiones residuales}
-Las conexiones residuales responden a la observación de que representar la función identidad requiere de varias capas no lineales adecuadamente parametrizadas y a la conjetura de que disponer de una representación más simple puede acelerar la convergencia de las redes \cite{he2016deep}.
+Las conexiones residuales responden a la observación de que una capas de neuronas no lineales no puede computar la función identidad, siendo necesarias varias capas sucesivas  adecuadamente parametrizadas. Esto llevo a los investigadores a conjeturar de que disponer de una representación de la identidad más simple puede acelerar la convergencia de las redes \cite{he2016deep}.
 
-Para ello, se introduce una conexión entre la entrada de una capa y su salida que ``puentee'' la capa en sí, de forma que si \( f \) es la función de capa original, la capa con conexión residual compute la función \( \id + f \). Esta técnica, que permite representar más fácilmente la función identidad y funciones cercanas, se ha demostrado imprescindible para poder aumentar la profundidad de las redes neuronales sin experimentar degradación del rendimiento.
+Para ello, se introduce una conexión entre la entrada de una capa y su salida que ``puentee'' la capa en sí, de forma que si \( f \) es la función de capa original, la capa con conexión residual compute la función \( \id + f \). Esta técnica, que permite representar más fácilmente la función identidad, se ha demostrado imprescindible para poder aumentar la profundidad de las redes neuronales sin experimentar degradación del rendimiento.
 
 \subsubsection{Abandono (\textit{Dropout})}
-Por norma general, la combinación de varias redes neuronales en un \textit{ensamblado} consigue mejores resultados que los modelos por separado. Sin embargo, los ensamblados de redes neuronales son poco convenientes, porque multiplican el tiempo de aprendizaje y, lo que es más importante, el tiempo de inferencia, lo que resulta muchas veces inaceptable pues la inferencia se realiza durante toda la vida útil del modelo y comúnmente bajo requisitos de tiempo estrictos.
+Por norma general, la combinación de varias redes neuronales en un \textit{ensamblado} consigue mejores resultados que los modelos por separado. Sin embargo, los ensamblados de redes neuronales son poco convenientes, porque multiplican el tiempo de aprendizaje y, lo que es más importante, el tiempo de inferencia, lo que resulta muchas veces inaceptable, pues la inferencia se realiza durante toda la vida útil del modelo y comúnmente bajo requisitos de tiempo estrictos.
 
 El abandono es una forma eficiente de simular un ensamblado, mediante la anulación aleatoria de elementos de la entrada. 
 \begin{definition}[Abandono (\textit{dropout})]

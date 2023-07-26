@@ -1,5 +1,6 @@
 \documentclass[12pt, a4paper, oneside]{book}
 \usepackage{tfg}
+\usepackage{menukeys} 
 
 % Notación
 \renewcommand\nomgroup[1]{%
@@ -25,12 +26,12 @@
 \pagestyle{plain}
 
 \begin{document}
-    \setcounter{page}{-1}
+    \pagenumbering{gobble} 
     \input{cover}
     \newpage
-    % \input{intro_state}
-    \pagenumbering{roman}
-    \setcounter{page}{1}
+    \input{abstract_sp}
+    \newpage
+    \input{abstract}
     \tableofcontents
     \printnomenclature[6em]
 
@@ -53,6 +54,6 @@
     ]
     \appendix
     \input{appendixA}
-    % \input{appendixB}
+    \input{appendixB}
 
 \end{document}

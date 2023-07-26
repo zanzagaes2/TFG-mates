@@ -1,24 +1,22 @@
 \cleardoublepage
 
 \chapter{Introducción}
-Probablemente el lector ha interactuado con sistemas como Chat-GPT o Bard, asistentes capaces de conversar convincentemente sobre una variedad de temas, generar código o resolver exámenes. Todos estos sistemas tienen por núcleo redes neuronales profundas llamados \textit{grandes modelos de lenguaje} con una arquitectura concreta, la arquitectura \textit{transformer}, presentada por primera vez en 2017 \cite{vaswani2017attention}.
+Posiblemente el lector ha interactuado con sistemas como Chat-GPT o Bard, asistentes capaces de conversar convincentemente sobre una variedad de temas, generar código o resolver exámenes. Estas herramientas tienen por núcleo redes neuronales profundas, llamadas \textit{grandes modelos de lenguaje}, diseñadas con una arquitectura concreta, la arquitectura \textit{transformer}, presentada por primera vez en 2017 \cite{vaswani2017attention}.
 
-Desde su aparición, los \textit{transformer} se han convertido en la opción preferencial para abordar problemas relacionados con el procesamiento de lenguaje natural, por su excelente rendimiento y porque presentan una arquitectura modular escalable, que permite construir modelos más grandes y potentes sin demasiados inconvenientes. Estos modelos pueden adaptarse a resolver problemas no textuales, como la clasificación de imágenes, obteniendo en muchas ocasiones resultados superiores a las de arquitecturas especializadas \cite{dosovitskiy2020image}.
+Desde su aparición, esta arquitectura se ha convertido en la opción preferencial para abordar problemas relacionados con el procesamiento de lenguaje natural, por su excelente rendimiento y por su notable escalabilidad, que permite construir modelos más grandes y potentes sin demasiados inconvenientes. 
 
-Lo verdaderamente sorprendente, no obstante, es que, una vez alcanzan una escala suficiente, estos modelos empiezan a mostrar \textit{habilidades emergentes}, volviéndose capaces de realizar tareas para las que no han sido entrenados, como seguir listas de instrucciones o realizar operaciones aritméticas \cite{wei2022emergent}. Los grandes modelos de lenguaje ya presentan un rendimiento mayor que los humanos en una multitud de tareas (por ejemplo, obtienen una calificación en el percentil 90 en el examen de acceso universitario SAT) y son considerados por algunos profesionales como el preámbulo de las inteligencias artificiales de propósito general \cite{bubeck2023sparks}.
+Lo verdaderamente sorprendente es que, una vez que alcanzan una escala suficiente, los modelos basados en \textit{transformers} empiezan a mostrar \textit{habilidades emergentes}, volviéndose capaces de realizar tareas para las que no han sido entrenados \cite{wei2022emergent}. Los grandes modelos de lenguaje ya presentan un rendimiento mayor que los humanos en una multitud de tareas (por ejemplo, obtienen una calificación en el percentil 90 en el examen de acceso universitario en EEUU, SAT) y son considerados por algunos profesionales como el preámbulo de las inteligencias artificiales de propósito general \cite{bubeck2023sparks}.
 
-Estos modelos no sólo tienen un interés teórico. Aunque el proceso de integración de los \textit{transformers} no ha hecho más que empezar, estos modelos ya se utilizan como traductores automáticos y asistentes conversacionales y se han integrado en los buscadores. 
+Estos modelos no sólo tienen un interés teórico. Aunque el proceso de integración de los \textit{transformers} no ha hecho más que empezar, estos modelos ya se utilizan como traductores automáticos y asistentes conversacionales y se han integrado en los buscadores de Internet. Conforme se generalizan este tipo de redes, sus limitaciones se hacen más claras: pueden presentar de forma convincente resultados inventados (añadiendo citas y referencias inexistentes), ser engañados para desoír las indicaciones dadas por sus programadores o llegar a amenazar a los usuarios \cite{gpthallucination,gptthreats}. Su capacidad para ser confundidos con humanos, las convierte en temibles armas para la desinformación, la propaganda política o la publicidad. 
 
-Conforme se generalizan este tipo de redes, sus limitaciones se hacen más claras y preocupantes: pueden presentar de forma convincente resultados inventados (añadiendo citas y referencias inexistentes), ser engañados para desoír las indicaciones dadas por sus programadores o llegar a amenazar a los usuarios \cite{gpthallucination} \cite{gptthreats}. Su capacidad para ser confundidos con humanos, las convierte en temibles armas para la desinformación, la propaganda política o la publicidad. 
-
-Existen, por tanto, razones más que sobradas para justificar el estudio de las \textit{transformers} y quienes no se vean atraídos por comprender la elegancia de su diseño o lo amplio de sus posibilidades, coincidirán en la necesidad de comprender las amenazas y oportunidades que plantea su integración en nuestra vida diaria.
+Existen, por tanto, razones más que sobradas para justificar el estudio de los \textit{transformers}: la elegancia de su diseño, lo amplio de sus posibilidades y  la urgente necesidad de comprender las amenazas y oportunidades que plantea su integración en nuestras sociedades.
 
 \section{Objetivos del trabajo}
-La velocidad de avance del campo del aprendizaje profundo y lo relativamente aislado de su comunidad, ha provocado un grave desfase entre la realidad del campo y los contenidos cubiertos por los manuales y otros recursos. Los manuales existentes sobre el tema, aunque de una calidad excelente, no asumen conocimientos matemáticos extensos previos y deben cubrir una inmensa cantidad de contenido. Además, la mayoría son anteriores a la publicación de los \textit{transformers}.
+La velocidad de avance del campo del aprendizaje profundo y lo relativamente aislado de su comunidad, ha provocado un grave desfase entre la realidad del campo y los contenidos cubiertos por los manuales y otros recursos, la mayoría anteriores a la publicación de los \textit{transformers}.
 
-Este trabajo se ha estructurado para ofrecer una introducción al campo del aprendizaje profundo y, específicamente, a las arquitecturas \textit{transformers} que requiere únicamente conocimiento matemático sólido en los fundamentos de la teoría de la probabilidad, la inferencia estadística, el álgebra lineal y el cálculo multivariable, sin que sea necesario ningún conocimiento previo sobre redes neuronales.
+Este trabajo se ha estructurado para ofrecer una introducción al campo del aprendizaje profundo y, específicamente, a las arquitecturas \textit{transformers} que requiere únicamente madurez matemática en los fundamentos de la teoría de la probabilidad, la inferencia estadística, el álgebra lineal y el cálculo multivariable, sin que sea necesario ningún conocimiento previo sobre redes neuronales.
 
-A fin de dar una aplicación práctica a los conceptos, el trabajo finaliza con una implementación del modelo GPT (probablemente la aplicación más influyente de la arquitectura \textit{transformer}) y su uso para abordar un problema complejo: crear una red neuronal capaz de generar texto al estilo de Lope de Vega. Por lo que sabemos, esta es la primera vez que se entrena una red similar para reproducir el estilo de un autor en lengua castellana.
+El trabajo finaliza con una implementación del modelo GPT (probablemente la aplicación más influyente de la arquitectura \textit{transformer}) y su uso para abordar un problema complejo: crear una red neuronal capaz de generar texto al estilo de Lope de Vega. Por lo que sabemos, esta es la primera vez que se entrena una red similar para reproducir el estilo de un autor en lengua castellana. 
 
 En conclusión, las metas fundamentales del trabajo son:
 \begin{enumerate}[label=(O\arabic*)]
@@ -29,3 +27,15 @@ En conclusión, las metas fundamentales del trabajo son:
     \item Presentar la arquitectura \textit{transformer} y ponerla en relación con arquitecturas anteriores. Entender cómo puede modificarse para abordar problemas diversos, como la generación de texto
     \item Implementar \textit{GPT} y utilizar la arquitectura para abordar el problema de generar texto en el estilo de Lope de Vega. Evaluar el rendimiento y discutir alternativas y limitaciones.
 \end{enumerate}
+
+\section{Plan de trabajo}
+La adquisición de los rudimentos del campo del aprendizaje automático se ha realizado en colaboración con varios compañeros, bajo la supervisión de la directora del trabajo, la profesora Pardo San Gil. 
+
+A partir de estas bases, se ha profundizado, mediante el estudio autónomo, en el campo de las arquitecturas \textit{transformer}. La gran mayoría de la literatura no tiene como prioridad la formalización matemática de los conceptos introducidos, con lo que ha sido necesario encontrar abstracciones adecuadas que permitan su discusión inequívoca.
+
+Una vez sentada la base teórica, y en paralelo a la creación de esta memoria, se ha implementado la arquitectura y aplicado al problema propuesto. Esta tarea requiere familiaridad con las librerías de programación contemporáneas, obras de ingeniería de gran complejidad.
+
+Finalmente, tanto los resultados teóricos como las aplicaciones prácticas que se recogen en esta memoria han sido presentadas al grupo de estudio inicial, en dos presentaciones de 50 y 10 minutos respectivamente, bajo la supervisión de la profesora Pardo San Gil. Dichas presentaciones, así como la revisión llevada a cabo por la directora, se han probado de gran utilidad para dar su forma final a este trabajo.
+
+
+

@@ -1,37 +1,39 @@
 \chapter{Implementación de GPT} \label{appendixA}
-GPT es un modelo sencillo y puede implementarse elegantemente en pocos cientos de líneas de código. Se presenta aquí una implementación funcional de los bloques fundamentales, que hace uso de la biblioteca \textit{pytorch}.
+GPT es un modelo sencillo y puede implementarse elegantemente en pocos cientos de líneas de código. Se presenta aquí una implementación funcional de los bloques fundamentales, que hace uso de la biblioteca \textit{pytorch}. Tanto el código como los modelos entrenados están disponibles en un repositorio de acceso público \cite{githubrepo}.
 
-La implementación de la atención multicabezal puede hacerse de forma muy similar a la explicada anteriormente (\cref{code:attn}), añadiendo \textit{abandono} en este caso. A fin de poder utilizar \textit{teacher forcing} de forma eficiente durante el entrenamiento, se \textit{enmascaran} los símbolos a la derecha del símbolo actual en la secuencia de entrada reemplazando esas posiciones con \( -\infty \), de forma que la activación de salida asociada a esa entrada sea \( 0 \).
+\section{Implementación de GPT}
+La implementación del modelo se realiza de forma estructurada a partir de sus componentes fundamentales: la atención multicabezal, los distintos mecanismos de regularización y normalización y las redes neuronales retroalimentadas.
+
+La implementación de la atención multicabezal puede hacerse de forma muy similar a la explicada anteriormente (\cref{code:attn}), añadiendo \textit{abandono} en este caso. Como hemos comentado anteriormente, la atención con máscara permite utilizar \textit{teacher forcing} de forma eficiente durante el entrenamiento.
 
 \begin{code}
 \begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
-class MultiheadAttention(Module):
-  def __init__(self, d_embedding, n_head, dropout, block_size):
-    super().__init__()
-    self.d_embedding = d_embedding
-    self.n_head = n_head
+class MultiheadAttention(nn.Module):
+    def __init__(self, d_embedding, n_head, dropout):
+        super().__init__()
+        assert d_embedding % n_head == 0
+        self.d_embedding = d_embedding
+        self.n_head = n_head
 
-    self.c_attn = nn.Linear(config.d_embedding, 3 * d_embedding)
-    self.c_proj = nn.Linear(config.d_embedding, d_embedding)
-    self.attn_dropout = nn.Dropout(dropout)
-    self.resid_dropout = nn.Dropout(dropout)
-    self.dropout = dropout
-    self.register_buffer("attn_mask", torch.tril(torch.ones(block_size, block_size)).view(1, 1, block_size, block_size))
+        self.c_attn = nn.Linear(d_embedding, 3 * d_embedding)
+        self.c_proj = nn.Linear(d_embedding, d_embedding)
+        self.attn_dropout = nn.Dropout(dropout)
+        self.resid_dropout = nn.Dropout(dropout)
+        self.dropout = dropout
 
-  def forward(self, x):
-    B, N, D = x.size()
-    q, k, v = self.c_attn(x).split(self.d_embedding, dim=2)
-    q = q.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
-    k = k.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
-    v = v.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
+    def forward(self, x):
+        B, N, D = x.size()
+        q, k, v = self.c_attn(x).split(self.d_embedding, dim=2)
+        q = q.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
+        k = k.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
+        v = v.view(B, N, self.n_head, D // self.n_head).transpose(1, 2)
 
-    attn = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-    attn = softmax(attn.masked_fill(self.attn_mask[:,:,:T,:T] == 0, float('-inf')))
-    attn = self.attn_dropout(attn)
-    y = attn @ v
-    y = y.transpose(1, 2).contiguous().view(B, T, C)
-    y = self.resid_dropout(self.c_proj(y))
-    return y
+        out = torch.nn.functional.scaled_dot_product_attention(q, k, v,
+            dropout_p = self.dropout if self.training else 0,
+            is_causal = True)
+        out = out.transpose(1, 2).contiguous().view(B, N, D)
+        out = self.resid_dropout(self.c_proj(out))
+        return out
 \end{minted}
 \caption{Implementación en \textit{Pytorch} de la atención multicabezal}
 \label{code:attn}
@@ -41,26 +43,35 @@ La dimensión de la representación de cada símbolo (\texttt{d\_embedding}), el
 
 \begin{code}
 \begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
-def MLP(d_embedding, dropout):
-  return nn.Sequential(OrderedDict([
-    ("c_fc", nn.Linear(d_embedding, 4 * d_embedding)),
-    ("act", nn.GELU()),
-    ("c_proj", nn.Linear(4 * d_embedding, d_embedding)),
-    ("dropout", nn.Dropout(dropout))
-  ]))
+class LayerNorm(nn.Module):
+    def __init__(self, n, bias):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(n))
+        self.bias = nn.Parameter(torch.zeros(n)) if bias else None
+
+    def forward(self, x):
+        return nn.functional.layer_norm(x, self.weight.shape, self.weight, self.bias)
+
+def MLP(d_embedding, dropout, bias):
+    return nn.Sequential(OrderedDict([
+        ("c_fc", nn.Linear(d_embedding, 4 * d_embedding, bias = bias)),
+        ("act", nn.GELU()),
+        ("c_proj", nn.Linear(4 * d_embedding, d_embedding, bias = bias)),
+        ("dropout", nn.Dropout(p = dropout))
+    ]))
 
 class Block(nn.Module):
-  def __init__(self, d_embedding, n_head, dropout, block_size):
-    super().__init__()
-    self.ln_1 = LayerNorm(d_embedding)
-    self.attn = MultiheadAttention(d_embedding, n_head, dropout, block_size)
-    self.ln_2 = LayerNorm(d_embedding)
-    self.mlp = MLP(d_embedding, dropout)
+    def __init__(self, d_embedding, n_head, dropout, bias):
+        super().__init__()
+        self.ln_1 = LayerNorm(d_embedding, bias)
+        self.attn = MultiheadAttention(d_embedding, n_head, dropout)
+        self.ln_2 = LayerNorm(d_embedding, bias=bias)
+        self.mlp = MLP(d_embedding, dropout, bias)
 
-  def forward(self, x):
-    x = x + self.attn(self.ln_1(x))
-    x = x + self.mlp(self.ln_2(x))
-    return x
+    def forward(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
 \end{minted}
 \caption{Implementación en \textit{Pytorch} del bloque decodificador del transformer}
 \label{code:decoder}
@@ -69,30 +80,142 @@ class Block(nn.Module):
 \begin{code}
 \begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
 class GPT(Module):
-  def __init__(self, d_embedding, n_layer, n_embd, vocab_size, block_size, dropout):
-    self.transformer = nn.ModuleDict(dict(
-      wte = Embedding(vocab_size, d_embedding),
-      wpe = Embedding(block_size, d_embedding),
-      drop = Dropout,
-      h = ModuleList([Block(d_embedding, n_head, dropout, block_size) 
-        for _ in range(n_layer)]),
-      ln_f = LayerNorm(n_embd)))
-    self.lm_head = nn.Linear(config.d_embedding, config.vocab_size, bias = False)
+    def __init__(self, vocab_size, block_size, d_embedding, n_head, dropout, bias, n_layer):
+        super().__init__()
+        self.block_size = block_size
+        self.transformer = nn.ModuleDict(dict(
+            wte = nn.Embedding(vocab_size, d_embedding), # tokenización de símbolos
+            wpe = nn.Embedding(block_size, d_embedding), # codificación posicional
+            drop = nn.Dropout(p = dropout),
+            h = nn.ModuleList([Block(d_embedding, n_head, dropout, bias) for _ in range(n_layer)]),
+            ln_f = LayerNorm(d_embedding, bias)
+        ))
+        self.lm_head = nn.Linear(d_embedding, vocab_size, bias = False)
 
-  def forward(self, x):
-    _, t = x.size()
-    pos = torch.arange(0, t).unsqueeze(0)
-    tok_emb = self.transformer.wte(idx) # representación de los símbolos
-    pos_emb = self.transformer.wpe(pos) # representación de las posiciones
+        self.apply(self._init_weights)
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * n_layer))
 
-    x = self.transformer.drop(tok_emb + pos_emb)
-    for block in self.transformer.h:
-      x = block(x)
-    x = self.transformer.ln_f(x)
-    return self.lm_head(x)
+    def forward(self, x):
+        _, t = x.size()
+        pos = torch.arange(0, t).unsqueeze(0)
+        tok_emb = self.transformer.wte(x) # representación de los símbolos
+        pos_emb = self.transformer.wpe(pos) # representación de las posiciones
+
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+        return self.lm_head(x)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+        torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        if module.bias is not None:
+            torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
 \end{minted}
 \caption{Implementación en \textit{Pytorch} de la arquitectura GPT}
 \label{code:gpt}
 \end{code}
 
-El bloque decodificador del transformer, la base de GPT, se presenta en el \cref{code:decoder}. A partir de estos componentes, se pueden definir distintas arquitecturas inspiradas en GPT (\cref{code:gpt}), variando el número de bloques o la dimensión de las representaciones internas.
+El bloque decodificador del transformer, la base de GPT, se presenta en el \cref{code:decoder}. A partir de estos componentes, se pueden definir distintas arquitecturas inspiradas en GPT (\cref{code:gpt}), variando el número de bloques o la dimensión de las representaciones internas. 
+
+Hemos utilizado la inicialización de pesos presente en el artículo que introdujo GPT-2 \cite{radford2019language}.
+
+\section{Entrenamiento de GPT}
+Con objeto de facilitar la reproducibilidad, se proporciona también el código utilizado para el entrenamiento del modelo. Aunque los parámetros arquitectónicos y de entrenamiento utilizados en los distintos experimentos aparecen mencionados en el texto principal.
+
+\begin{code}
+\begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}  
+device = 'cuda'
+dtype = 'float16'
+batch_size = 12
+block_size = 1024
+
+train_data = "train/"
+val_data = "val/"
+tokens_per_iter =  batch_size * block_size
+train_data = np.memmap(train_data)
+val_data = np.memmap(val_data)
+
+model = GPT(**model_config).to(device)
+optimizer = torch.optim.AdamW(model.parameters(), **learning_parameters)
+scaler = torch.cuda.amp.GradScaler()
+
+def sample_batch(dataset):
+    data = train_data if dataset == "train" else val_data
+    length = torch.randint(len(data) - block_size, (batch_size,))
+    x = torch.stack([torch.from_numpy((data[i:i+block_size])) for i in length])
+    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size])) for i in length])
+    x, y = x.to(device), y.to(device)
+    return x, y
+
+@torch.no_grad()
+def estimate_loss():
+    losses = []
+    model.eval()
+    for dataset in ['train', 'val']:
+    X, Y = sample_batch(dataset)
+    with torch.amp.autocast():
+        logits = model(X)
+        loss = nn.functional.cross_entropy(logits, Y, ignore_index=-1)
+        losses.append(loss.item())
+    model.train()
+    return losses
+
+for iter_num in count():
+    X, Y = sample_batch('train')
+    with torch.amp.autocast():
+        logits = model(X)
+        loss = nn.functional.cross_entropy(logits, Y, ignore_index=-1)
+
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+    optimizer.zero_grad(set_to_none=True)
+    train_loss, val_loss = estimate_loss()
+    print(f"epoch {iter_num}: train loss {train_loss:.4f}, val loss {val_loss:.4f}")
+\end{minted}
+\caption{Bucle de entrenamiento de un modelo GPT}
+\label{code:train_gpt}
+\end{code}
+
+\section{Generación de texto}
+Una vez entrenado el modelo, el \cref{code:generation_gpt} puede usarse para generar nuevos símbolos. Como puede verse, el código sigue con bastante fidelidad el pseudocódigo presentado anteriormente (\cref{algo:gpt_inference}), aunque es necesario abordar aspectos adicionales, como determinar qué operaciones deben incluirse a la hora de calcular el gradiente, la elección de una precisión numérica de trabajo o la selección del dispositivo sobre el que realizar los cómputos. Debe tenerse presente que el uso de modelos de la escala de GPT-2 requiere el uso de tarjetas gráficas, unidades de procesamiento tensorial u otros dispositivos similares, que deben haber sido previamente configurados.
+
+\begin{code}
+\begin{minted}[frame=single,framesep=5pt,breaklines,fontsize={\fontsize{9.5}{10.5}\selectfont}]{python}
+model = GPT(**model_config).eval().to(device)
+
+@torch.no_grad()
+def generate_tokens(model, x, generated_tokens, temperature=0.8):
+    for _ in range(generated_tokens):
+        # recortar si se ha sobrepasado el tamaño de contexto
+        x_cropped = x if x.size(1) <= model.block_size else x[:, -model.block_size:]
+        logits = model(x_cropped)
+        logits = logits[:, -1, :] / temperature
+        probs = nn.functional.softmax(logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1)
+        x = torch.cat((x, next_token), dim=1)
+        yield next_token
+
+prompt = "\n" # texto de estímulo
+num_samples = 10 # número de muestras a generar
+generated_tokens = 500 # número de símbolos generados por muestra
+
+start_ids = encode(prompt)
+x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
+with torch.no_grad():
+    for _ in range(num_samples):
+        print("\n==== Nueva muestra =====")
+        print(prompt, end="")
+        for token in generate_tokens(model, x, generated_tokens, temperature = temperature):
+            print(decode(token[0].tolist()), end="")
+\end{minted}
+\caption{Generación de texto usando un modelo GPT}
+\label{code:generation_gpt}
+\end{code}
